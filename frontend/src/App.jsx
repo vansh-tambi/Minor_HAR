@@ -4,7 +4,7 @@ import { useAccelerometer } from './hooks/useAccelerometer';
 import SensorChart from './components/SensorChart';
 
 function App() {
-  const [backendUrl, setBackendUrl] = useState('http://localhost:5000');
+  const [backendUrl, setBackendUrl] = useState(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000');
   const [prediction, setPrediction] = useState(null);
   const [status, setStatus] = useState({ msg: 'System Ready — Click Start to Begin', type: 'ok' });
   const [recentHistory, setRecentHistory] = useState([]);

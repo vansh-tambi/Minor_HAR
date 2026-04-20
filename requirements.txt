@@ -1,0 +1,8 @@
+flask
+flask-cors
+tensorflow-cpu
+keras
+numpy
+pandas
+scikit-learn
+python-dotenv

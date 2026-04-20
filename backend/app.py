@@ -9,6 +9,9 @@ import csv
 import pickle
 import collections
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import numpy as np
 from flask import Flask, request, jsonify
@@ -188,7 +191,12 @@ def activities():
 
 if __name__ == "__main__":
     print("\n" + "=" * 50)
-    print("  HAR Backend running at http://localhost:5000")
-    print("  Open frontend/index.html in your browser")
+    port = int(os.getenv("PORT", 5000))
+    debug_mode = os.getenv("DEBUG", "True").lower() == "true"
+    
+    print(f"  HAR Backend running at http://localhost:{port}")
+    print(f"  Debug Mode: {'ON' if debug_mode else 'OFF'}")
+    print("  Open the frontend react app in your browser")
     print("=" * 50 + "\n")
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    
+    app.run(debug=debug_mode, host="0.0.0.0", port=port)
