@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HAR — Live Activity Recognition</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 { text-align: center; font-size: 1.4rem; color: #a78bfa; margin-bottom: 20px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    @media(max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: #1e2130;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #2d3148;
+    }
+    .card h2 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* Activity display */
+    #activity-card { grid-column: 1 / -1; text-align: center; }
+    #activity-label {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: #a78bfa;
+      min-height: 60px;
+      line-height: 1.1;
+    }
+    #confidence-bar-wrap { margin: 10px auto; max-width: 320px; }
+    #confidence-text { font-size: 0.9rem; color: #64748b; margin-top: 4px; }
+    .bar-bg { background: #2d3148; border-radius: 8px; height: 10px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 8px; background: #a78bfa; transition: width 0.4s; width: 0%; }
+
+    /* Controls */
+    #controls { grid-column: 1 / -1; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    button {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.95rem;
+      cursor: pointer;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    #btn-start { background: #a78bfa; color: #0f1117; }
+    #btn-stop  { background: #f43f5e; color: #fff; }
+
+    /* Status */
+    #status {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #64748b;
+      min-height: 20px;
+    }
+    #status.ok  { color: #34d399; }
+    #status.err { color: #f43f5e; }
+
+    /* Buffer progress */
+    #buffer-wrap { grid-column: 1 / -1; }
+    #buffer-label { font-size: 0.8rem; color: #64748b; margin-bottom: 6px; }
+    .bar-bg.slim { height: 6px; }
+    #buffer-fill { height: 100%; border-radius: 8px; background: #38bdf8; transition: width 0.1s; width: 0%; }
+
+    /* Sensor values */
+    .sensor-vals { display: flex; gap: 12px; margin-top: 8px; }
+    .axis { flex: 1; background: #131624; border-radius: 8px; padding: 8px; text-align: center; }
+    .axis span { display: block; font-size: 1.2rem; font-weight: 700; }
+    .axis label { font-size: 0.7rem; color: #64748b; }
+    .x span { color: #f87171; }
+    .y span { color: #34d399; }
+    .z span { color: #38bdf8; }
+
+    /* Top activities list */
+    .prob-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; }
+    .prob-name { width: 130px; color: #cbd5e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prob-bar-bg { flex: 1; background: #131624; border-radius: 4px; height: 8px; overflow: hidden; }
+    .prob-bar { height: 100%; border-radius: 4px; background: #a78bfa; transition: width 0.4s; }
+    .prob-pct { width: 38px; text-align: right; color: #64748b; }
+  </style>
+</head>
+<body>
+
+<h1>🏃 Human Activity Recognition — Live</h1>
+
+<div class="grid">
+
+  <!-- Status -->
+  <div id="status" class="ok">Ready — click Start to begin</div>
+
+  <!-- Activity -->
+  <div class="card" id="activity-card">
+    <h2>Detected Activity</h2>
+    <div id="activity-label">—</div>
+    <div id="confidence-bar-wrap">
+      <div class="bar-bg"><div class="bar-fill" id="conf-fill"></div></div>
+      <div id="confidence-text">Confidence: —</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div id="controls">
+    <button id="btn-start" onclick="startCapture()">▶ Start</button>
+    <button id="btn-stop"  onclick="stopCapture()" disabled>■ Stop</button>
+  </div>
+
+  <!-- Buffer progress -->
+  <div class="card" id="buffer-wrap">
+    <h2>Collecting window</h2>
+    <div id="buffer-label">0 / 200 samples</div>
+    <div class="bar-bg slim"><div id="buffer-fill"></div></div>
+  </div>
+
+  <!-- Live sensor values -->
+  <div class="card">
+    <h2>Accelerometer (m/s²)</h2>
+    <div class="sensor-vals">
+      <div class="axis x"><span id="ax">0.00</span><label>X</label></div>
+      <div class="axis y"><span id="ay">0.00</span><label>Y</label></div>
+      <div class="axis z"><span id="az">0.00</span><label>Z</label></div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card">
+    <h2>Sensor stream</h2>
+    <canvas id="sensorChart" height="100"></canvas>
+  </div>
+
+  <!-- Top probabilities -->
+  <div class="card" id="prob-card">
+    <h2>Top activities</h2>
+    <div id="prob-list"></div>
+  </div>
+
+</div>
+
+<script>
+const BACKEND   = "http://localhost:5000/predict";
+const FREQ      = 20;      // samples per second
+const FRAME     = 200;     // 10 seconds × 20 Hz
+const INTERVAL  = 1000 / FREQ;
+
+let buffer      = [];
+let capturing   = false;
+let intervalId  = null;
+let lastX = 0, lastY = 0, lastZ = 0;
+let useSimulation = false;
+
+// ── Chart setup ───────────────────────────────────────────────────────────────
+const ctx = document.getElementById("sensorChart").getContext("2d");
+const chartData = { labels: [], datasets: [
+  { label: "X", data: [], borderColor: "#f87171", borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
+  { label: "Y", data: [], borderColor: "#34d399", borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
+  { label: "Z", data: [], borderColor: "#38bdf8", borderWidth: 1.2, pointRadius: 0, tension: 0.3 },
+]};
+const chart = new Chart(ctx, {
+  type: "line",
+  data: chartData,
+  options: {
+    animation: false,
+    responsive: true,
+    plugins: { legend: { labels: { color: "#94a3b8", font: { size: 10 } } } },
+    scales: {
+      x: { display: false },
+      y: { ticks: { color: "#64748b", font: { size: 9 } }, grid: { color: "#1e2130" } }
+    }
+  }
+});
+
+function pushChart(x, y, z) {
+  const MAX = 60;
+  chartData.labels.push("");
+  chartData.datasets[0].data.push(x);
+  chartData.datasets[1].data.push(y);
+  chartData.datasets[2].data.push(z);
+  if (chartData.labels.length > MAX) {
+    chartData.labels.shift();
+    chartData.datasets.forEach(d => d.shift ? d.data.shift() : d.data.shift());
+  }
+  chart.update("none");
+}
+
+// ── DeviceMotion ──────────────────────────────────────────────────────────────
+function setupMotion() {
+  if (!window.DeviceMotionEvent) {
+    setStatus("DeviceMotion not available — using simulation mode", "ok");
+    useSimulation = true;
+    return;
+  }
+  window.addEventListener("devicemotion", onMotion);
+  setStatus("Motion sensor active", "ok");
+}
+
+function onMotion(e) {
+  const a = e.accelerationIncludingGravity;
+  if (!a) return;
+  lastX = a.x || 0;
+  lastY = a.y || 0;
+  lastZ = a.z || 0;
+}
+
+// ── Simulation (desktop fallback) ─────────────────────────────────────────────
+let simT = 0;
+function simulateSample() {
+  simT += 0.1;
+  lastX = 0.3 * Math.sin(simT * 1.1) + (Math.random() - 0.5) * 0.2;
+  lastY = 9.8 + 0.5 * Math.sin(simT * 0.7) + (Math.random() - 0.5) * 0.3;
+  lastZ = 0.4 * Math.cos(simT * 0.9) + (Math.random() - 0.5) * 0.2;
+}
+
+// ── Capture loop ──────────────────────────────────────────────────────────────
+function tick() {
+  if (useSimulation) simulateSample();
+
+  buffer.push([lastX, lastY, lastZ]);
+
+  document.getElementById("ax").textContent = lastX.toFixed(2);
+  document.getElementById("ay").textContent = lastY.toFixed(2);
+  document.getElementById("az").textContent = lastZ.toFixed(2);
+
+  pushChart(lastX, lastY, lastZ);
+
+  const pct = Math.min(100, (buffer.length / FRAME) * 100);
+  document.getElementById("buffer-fill").style.width = pct + "%";
+  document.getElementById("buffer-label").textContent =
+    `${buffer.length} / ${FRAME} samples`;
+
+  if (buffer.length >= FRAME) {
+    const window = buffer.slice(0, FRAME);
+    buffer = [];
+    sendToBackend(window);
+  }
+}
+
+async function sendToBackend(window) {
+  setStatus("Predicting…", "ok");
+  try {
+    const res  = await fetch(BACKEND, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: window }),
+    });
+    const json = await res.json();
+    if (json.error) { setStatus("Backend error: " + json.error, "err"); return; }
+    showResult(json);
+    setStatus("OK — predicting every 10 s", "ok");
+  } catch (err) {
+    setStatus("Cannot reach backend (is python backend/app.py running?)", "err");
+  }
+}
+
+function showResult(json) {
+  document.getElementById("activity-label").textContent = json.activity;
+  const pct = Math.round(json.confidence * 100);
+  document.getElementById("conf-fill").style.width = pct + "%";
+  document.getElementById("confidence-text").textContent = `Confidence: ${pct}%`;
+
+  // Top 5 probabilities
+  const sorted = Object.entries(json.all_probs)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  const list = document.getElementById("prob-list");
+  list.innerHTML = sorted.map(([name, prob]) => `
+    <div class="prob-row">
+      <div class="prob-name">${name}</div>
+      <div class="prob-bar-bg"><div class="prob-bar" style="width:${Math.round(prob*100)}%"></div></div>
+      <div class="prob-pct">${Math.round(prob*100)}%</div>
+    </div>`).join("");
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = cls;
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function startCapture() {
+  if (capturing) return;
+
+  // Request permission on iOS 13+
+  if (typeof DeviceMotionEvent !== "undefined" &&
+      typeof DeviceMotionEvent.requestPermission === "function") {
+    DeviceMotionEvent.requestPermission()
+      .then(perm => {
+        if (perm === "granted") { setupMotion(); _start(); }
+        else setStatus("Motion permission denied", "err");
+      }).catch(() => { useSimulation = true; _start(); });
+  } else {
+    setupMotion();
+    _start();
+  }
+}
+
+function _start() {
+  capturing = true;
+  buffer = [];
+  document.getElementById("btn-start").disabled = true;
+  document.getElementById("btn-stop").disabled  = false;
+  setStatus(useSimulation ? "Running in simulation mode (open on phone for real data)" : "Capturing…", "ok");
+  intervalId = setInterval(tick, INTERVAL);
+}
+
+function stopCapture() {
+  capturing = false;
+  clearInterval(intervalId);
+  buffer = [];
+  document.getElementById("btn-start").disabled = false;
+  document.getElementById("btn-stop").disabled  = true;
+  document.getElementById("buffer-fill").style.width = "0%";
+  document.getElementById("buffer-label").textContent = "0 / 200 samples";
+  setStatus("Stopped", "");
+}
+</script>
+</body>
+</html>

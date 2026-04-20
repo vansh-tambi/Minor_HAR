@@ -1,0 +1,49 @@
+# ── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# ── Virtual environments ──────────────────────────────────
+venv/
+env/
+.env/
+.venv/
+
+# ── Jupyter Notebooks ─────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── IDE / Editor ──────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ── OS files ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── ML model artifacts (large binaries) ──────────────────
+*.keras
+*.h5
+*.pkl
+*.joblib
+
+# ── Dataset (too large for git) ──────────────────────────
+code/data/
+
+# ── Training outputs ─────────────────────────────────────
+backend/confusion_matrix.png
+backend/report.txt
+
+# ── Logs ──────────────────────────────────────────────────
+*.log
