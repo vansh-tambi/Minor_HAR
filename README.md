@@ -85,8 +85,8 @@ The following open source packages are used in this project:
     │   ├── train_model.py
     │   └── *.pkl / *.keras
     │
-    ├── frontend
-    │   └── index.html
+    ├── frontend-react
+    │   └── src / vite.config / etc.
     │
     ├── code
     │   ├── data
@@ -161,15 +161,17 @@ The following open source packages are used in this project:
 </p>
 <ul>
   <li><b>Backend (Flask + Keras):</b> Located in the <code>backend/</code> folder, a Python API serves our trained 1D CNN model. The <code>app.py</code> script loads the model and exposes a <code>/predict</code> route for continuous evaluation of incoming sensor data.</li>
-  <li><b>Frontend (HTML/JS):</b> Located in the <code>frontend/</code> folder, the dashboard connects to the device's accelerometer using the browser's <code>DeviceMotion</code> API (or runs a math simulation if used on desktop). It aggregates data in 10-second windows and polls the backend to display live activity predictions, probabilities with confidence bars, and a live updating sensor chart.</li>
+  <li><b>Frontend (React + Vite):</b> Located in the <code>frontend-react/</code> folder, a modern dashboard built with React and Framer Motion. It supports real-time mobile testing, configurable backend URLs, and features high-fidelity visualizations with <code>react-chartjs-2</code>.</li>
 </ul>
 
 <p><b>How to run:</b></p>
-<pre><code># 1. Start the Flask server (port 5000):
+<pre><code># 1. Start the Flask server:
 python backend/app.py
 
-# 2. Open the user interface:
-# Open frontend/index.html in any modern browser!
+# 2. Run the React application:
+cd frontend-react
+npm install
+npm run dev
 </code></pre>
 
 ![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
