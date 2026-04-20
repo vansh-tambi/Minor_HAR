@@ -35,11 +35,8 @@ env/
 Thumbs.db
 desktop.ini
 
-# ── ML model artifacts (large binaries) ──────────────────
-*.keras
-*.h5
-*.pkl
-*.joblib
+# ── ML model artifacts ──────────────────
+# (Allowing model files so API can load them in production)
 
 # ── Dataset (too large for git) ──────────────────────────
 code/data/
