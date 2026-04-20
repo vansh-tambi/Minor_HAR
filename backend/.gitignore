@@ -12,10 +12,7 @@ venv/
 env/
 
 # ML/Data (artifacts saved in backend)
-*.keras
-*.h5
-*.pkl
-*.joblib
+# (Keeping model and pkl files tracked for deployment)
 predictions_log.csv
 confusion_matrix.png
 report.txt
