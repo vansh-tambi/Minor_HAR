@@ -1,7 +1,8 @@
 """
 Flask backend for HAR prediction.
 Run from Minor_HAR folder: python backend/app.py
-Endpoint: POST /predict  →  { "data": [[x,y,z], ...200 samples...] }
+Endpoint: POST /predict  →  { "data": [[ax,ay,az,gx,gy,gz], ...200 samples...] }
+Accepts 6-channel input: accelerometer (X,Y,Z) + gyroscope (X,Y,Z)
 """
 
 import os
@@ -23,7 +24,8 @@ CORS(app)  # Allow browser requests from frontend
 
 # ── Config ────────────────────────────────────────────────────────────────────
 FRAME_SIZE           = 200    # 20 Hz × 10 seconds
-CONFIDENCE_THRESHOLD = 0.6    # below this → "Uncertain"
+NUM_CHANNELS         = 6      # accel(X,Y,Z) + gyro(X,Y,Z)
+CONFIDENCE_THRESHOLD = 0.45   # below this → "Uncertain" (lowered for 8 classes)
 SMOOTHING_WINDOW     = 3      # majority vote over last N predictions
 
 # ── Load model & helpers on startup ───────────────────────────────────────────
@@ -100,7 +102,7 @@ def predict():
     """
     Expects JSON body:
     {
-        "data": [[x1,y1,z1], [x2,y2,z2], ... ]   ← exactly 200 rows
+        "data": [[ax,ay,az,gx,gy,gz], ... ]   ← exactly 200 rows × 6 channels
     }
     Returns:
     {
@@ -121,7 +123,7 @@ def predict():
                 "status": "error",
             }), 400
 
-        data = np.array(body["data"], dtype=np.float32)  # shape: (N, 3)
+        data = np.array(body["data"], dtype=np.float32)  # shape: (N, 6)
 
         # ── Strict length check ───────────────────────────────────────────
         if data.shape[0] != FRAME_SIZE:
@@ -130,9 +132,9 @@ def predict():
                 "status": "error",
             }), 400
 
-        if data.ndim != 2 or data.shape[1] != 3:
+        if data.ndim != 2 or data.shape[1] != NUM_CHANNELS:
             return jsonify({
-                "error": f"Each sample must have 3 axes (X, Y, Z), got shape {data.shape}",
+                "error": f"Each sample must have {NUM_CHANNELS} channels (accel XYZ + gyro XYZ), got shape {data.shape}",
                 "status": "error",
             }), 400
 
@@ -145,7 +147,7 @@ def predict():
             data = _scaler.fit_transform(data)
 
         # ── Predict ───────────────────────────────────────────────────────
-        X = data.reshape(1, FRAME_SIZE, 3, 1)
+        X = data.reshape(1, FRAME_SIZE, NUM_CHANNELS, 1)
         probs = model.predict(X, verbose=0)[0]        # shape: (num_classes,)
         pred_idx   = int(np.argmax(probs))
         confidence = float(probs[pred_idx])

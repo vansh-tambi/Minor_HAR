@@ -6,14 +6,14 @@ const INTERVAL = 1000 / FREQ;
 
 export const useAccelerometer = (backendUrl, onWindowReady) => {
   const [isCapturing, setIsCapturing] = useState(false);
-  const [currentData, setCurrentData] = useState({ x: 0, y: 0, z: 0 });
+  const [currentData, setCurrentData] = useState({ ax: 0, ay: 0, az: 0, gx: 0, gy: 0, gz: 0 });
   const [bufferSize, setBufferSize] = useState(0);
   const [isSimulation, setIsSimulation] = useState(false);
   const [error, setError] = useState(null);
 
   const bufferRef = useRef([]);
   const intervalIdRef = useRef(null);
-  const sensorRef = useRef({ x: 0, y: 0, z: 0 });
+  const sensorRef = useRef({ ax: 0, ay: 0, az: 0, gx: 0, gy: 0, gz: 0 });
 
   const startCapture = async () => {
     if (isCapturing) return;
@@ -61,30 +61,45 @@ export const useAccelerometer = (backendUrl, onWindowReady) => {
   };
 
   const handleMotion = (e) => {
+    // Accelerometer data
     const acc = e.accelerationIncludingGravity;
-    if (acc) {
-      sensorRef.current = {
-        x: acc.x || 0,
-        y: acc.y || 0,
-        z: acc.z || 0,
-      };
-    }
+    // Gyroscope data (rotationRate gives angular velocity in deg/s)
+    const rot = e.rotationRate;
+
+    sensorRef.current = {
+      ax: acc?.x || 0,
+      ay: acc?.y || 0,
+      az: acc?.z || 0,
+      gx: rot?.alpha || 0,
+      gy: rot?.beta  || 0,
+      gz: rot?.gamma || 0,
+    };
   };
 
   const tick = () => {
-    let { x, y, z } = sensorRef.current;
+    let { ax, ay, az, gx, gy, gz } = sensorRef.current;
 
     if (isSimulation || !window.DeviceMotionEvent) {
-      // Simple simulation for desktop
+      // Desktop simulation: generate realistic-looking sensor data
       const t = Date.now() / 1000;
-      x = Math.sin(t * 1.5) * 0.5 + (Math.random() - 0.5) * 0.1;
-      y = 9.8 + Math.cos(t * 0.8) * 0.3 + (Math.random() - 0.5) * 0.1;
-      z = Math.sin(t * 1.1) * 0.4 + (Math.random() - 0.5) * 0.1;
-      sensorRef.current = { x, y, z };
+
+      // Simulated accelerometer (walking-like pattern)
+      ax = Math.sin(t * 1.5) * 0.5 + (Math.random() - 0.5) * 0.1;
+      ay = 9.8 + Math.cos(t * 0.8) * 0.3 + (Math.random() - 0.5) * 0.1;
+      az = Math.sin(t * 1.1) * 0.4 + (Math.random() - 0.5) * 0.1;
+
+      // Simulated gyroscope
+      gx = Math.sin(t * 2.0) * 0.3 + (Math.random() - 0.5) * 0.05;
+      gy = Math.cos(t * 1.3) * 0.2 + (Math.random() - 0.5) * 0.05;
+      gz = Math.sin(t * 0.7) * 0.15 + (Math.random() - 0.5) * 0.05;
+
+      sensorRef.current = { ax, ay, az, gx, gy, gz };
     }
 
-    setCurrentData({ x, y, z });
-    bufferRef.current.push([x, y, z]);
+    setCurrentData({ ax, ay, az, gx, gy, gz });
+
+    // Send 6 values per sample: [accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z]
+    bufferRef.current.push([ax, ay, az, gx, gy, gz]);
     setBufferSize(bufferRef.current.length);
 
     if (bufferRef.current.length >= FRAME_SIZE) {

@@ -157,12 +157,18 @@ function App() {
 
         {/* Live sensor values */}
         <div className="card">
-          <span className="coord-label">SEN_03 // XYZ</span>
+          <span className="coord-label">SEN_03 // ACCEL+GYRO</span>
           <h2>Accelerometer (m/s²)</h2>
           <div className="sensor-vals">
-            <div className="axis x"><span>{currentData.x.toFixed(2)}</span><label>X-Axis</label></div>
-            <div className="axis y"><span>{currentData.y.toFixed(2)}</span><label>Y-Axis</label></div>
-            <div className="axis z"><span>{currentData.z.toFixed(2)}</span><label>Z-Axis</label></div>
+            <div className="axis x"><span>{currentData.ax.toFixed(2)}</span><label>X-Axis</label></div>
+            <div className="axis y"><span>{currentData.ay.toFixed(2)}</span><label>Y-Axis</label></div>
+            <div className="axis z"><span>{currentData.az.toFixed(2)}</span><label>Z-Axis</label></div>
+          </div>
+          <h2 style={{marginTop: '12px'}}>Gyroscope (°/s)</h2>
+          <div className="sensor-vals">
+            <div className="axis x"><span>{currentData.gx.toFixed(2)}</span><label>α</label></div>
+            <div className="axis y"><span>{currentData.gy.toFixed(2)}</span><label>β</label></div>
+            <div className="axis z"><span>{currentData.gz.toFixed(2)}</span><label>γ</label></div>
           </div>
         </div>
 

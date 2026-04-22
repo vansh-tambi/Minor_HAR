@@ -82,9 +82,9 @@ const SensorChart = ({ data }) => {
 
   useEffect(() => {
     const { datasets } = chartData.current;
-    datasets[0].data.push(data.x);
-    datasets[1].data.push(data.y);
-    datasets[2].data.push(data.z);
+    datasets[0].data.push(data.ax);
+    datasets[1].data.push(data.ay);
+    datasets[2].data.push(data.az);
 
     if (datasets[0].data.length > MAX_SAMPLES) {
       datasets[0].data.shift();
