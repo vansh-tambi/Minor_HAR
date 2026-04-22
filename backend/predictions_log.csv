@@ -5,3 +5,5 @@ timestamp,predicted_activity,confidence
 2026-04-20 22:26:38,Uncertain,0.1574
 2026-04-20 22:26:48,Uncertain,0.1574
 2026-04-22 16:15:40,Still,0.4513
+2026-04-22 17:42:30,Still,0.9997
+2026-04-22 17:42:40,Still,0.9997
