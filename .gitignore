@@ -41,10 +41,17 @@ desktop.ini
 # ── Dataset (too large for git) ──────────────────────────
 code/data/
 code/wisdm-dataset/
+wisdm_data/
+wisdm.zip
+*.npy
+UCI HAR Dataset (1)/
+heterogeneity+activity+recognition/
 
-# ── Training outputs ─────────────────────────────────────
+# ── Training outputs / Backups ───────────────────────────
 backend/confusion_matrix.png
 backend/report.txt
+backend/backup_model/
+backend/predictions_log.csv
 
 # ── Node / React ──────────────────────────────────────────
 node_modules/
