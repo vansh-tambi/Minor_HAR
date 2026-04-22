@@ -1,116 +1,117 @@
-<h1 align="center"> Human Activity Recognition (HAR) Engine </h1>
-<h3 align="center"> Real-Time 6-Channel Activity Classification with Conv1D + LSTM </h3>  
+# Human Activity Recognition (HAR) Engine  
+### Real-Time Activity Classification using Conv1D + LSTM
 
-</br>
+---
 
-<!-- TABLE OF CONTENTS -->
-<h2 id="table-of-contents"> :book: Table of Contents</h2>
+## Overview  
 
-<details open="open">
-  <summary>Table of Contents</summary>
-  <ol>
-    <li><a href="#about-the-project"> ➤ About The Project</a></li>
-    <li><a href="#prerequisites"> ➤ Prerequisites</a></li>
-    <li><a href="#dataset-and-classes"> ➤ Dataset & Consolidated Classes</a></li>
-    <li><a href="#architecture"> ➤ Model Architecture</a></li>
-    <li><a href="#live-application"> ➤ Live Web Application</a></li>
-    <li><a href="#results"> ➤ Results</a></li>
-    <li><a href="#contributors"> ➤ Contributors</a></li>
-  </ol>
-</details>
+A real-time Human Activity Recognition system that classifies user movements using 6-axis sensor data (Accelerometer + Gyroscope) streamed directly from a mobile device.
 
-![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+The system processes live data through a Flask-based ML API and predicts activities using a hybrid deep learning model (1D CNN + LSTM).
 
-<!-- ABOUT THE PROJECT -->
-<h2 id="about-the-project"> :pencil: About The Project</h2>
+This system is designed for real-world usability rather than basic motion classification demos.
 
-<p align="justify"> 
-  This project is a <b>full-stack Human Activity Recognition (HAR) Engine</b>. It streams live, 6-channel sensor data (Accelerometer X, Y, Z and Gyroscope X, Y, Z) from a mobile device, processes it through a Flask backend, and classifies the user's specific movement using a highly optimized Deep Learning model (Conv1D + LSTM).
-</p>
-<p align="justify"> 
-  Unlike standard HAR prototypes which only use Accelerometers to classify basic states like "Walking vs Sitting," we incorporate <b>rotational gyroscope data</b> and recurrent neural networks to accurately discern between complex activities like "Sports," "Eating," and "Hand Activity."
-</p>
+---
 
-![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+## Key Highlights  
 
-<!-- PREREQUISITES -->
-<h2 id="prerequisites"> :fork_and_knife: Prerequisites</h2>
+- Real-time sensor data streaming from mobile browser  
+- Hybrid deep learning model (Conv1D + LSTM)  
+- Live visualization dashboard using React and Chart.js  
+- Low-latency predictions via Flask API  
+- Optimized 8-class activity classification  
 
-The application is split into a Deep Learning Backend and a React JS Frontend. You will need:
-* **Python 3.10+** (Numpy, Pandas, Matplotlib, Scikit-Learn, TensorFlow, Keras, Flask, Flask-CORS)
-* **Node.js 18+** (React, Vite, Chart.js)
+---
 
-![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+## Problem Statement  
 
-<!-- DATASET -->
-<h2 id="dataset-and-classes"> :floppy_disk: Dataset & Consolidated Classes</h2>
-<p align="justify"> 
-  The model was originally trained using the open-source <b>WISDM (Wireless Sensor Data Mining)</b> dataset. The original WISDM dataset contained 18 extremely convoluted, indistinguishable activities (e.g. attempting to differentiate "Eating Soup" vs "Eating Pasta" via a wrist sensor).
-</p>
+Traditional HAR systems:
+- Rely only on accelerometer data  
+- Struggle with overlapping activities  
+- Perform poorly in noisy real-world environments  
 
-<p align="justify"> 
-  To achieve high accuracy and stable real-world performance, we consolidated the data into <b>8 robust, highly distinct categories</b>:
-</p>
+This system improves performance by:
+- Using combined accelerometer and gyroscope data (6 channels)  
+- Applying temporal modeling using LSTM  
+- Consolidating noisy labels into meaningful activity groups  
 
-<p align="center">
-  <b>Activities Tracked:</b> Walking, Jogging, Stairs, Still, Eating, Hand Activity, Active Hands, Sports.
-</p>
+---
 
-![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+## Dataset & Classes  
 
-<!-- ARCHITECTURE -->
-<h2 id="architecture"> :hammer: Model Architecture</h2>
+**Dataset:** WISDM (Wireless Sensor Data Mining)
 
-<p align="justify"> 
-  The raw time-series data is segmented using a <b>10-second sliding window with 50% overlap</b> (yielding a tensor shape of <code>200 samples x 6 channels</code>). This data is passed into a Hybrid Neural Network:
-  <ol>
-    <li><b>1D Convolutional Layers:</b> Two layers of <code>Conv1D</code> (with MaxPooling and BatchNormalization) extract distinct spatial features across the 6 synchronized sensor channels.</li> 
-    <li><b>LSTM Layer:</b> The feature maps are passed into a Long Short-Term Memory (<code>LSTM</code>) recurrent layer, giving the model temporal "memory" to understand how spatial features evolve over the 10-second window.</li>
-    <li><b>Dense Classifier:</b> A final dense network acts as the multi-class (8-class) softmax classifier.</li>
-  </ol>
-</p>
+The original dataset contains 18 complex and overlapping activities. These were consolidated into 8 practical categories to improve real-world performance.
 
-![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
+### Final Classes:
+- Walking  
+- Jogging  
+- Stairs  
+- Still  
+- Eating  
+- Hand Activity  
+- Active Hands  
+- Sports  
 
-<!-- LIVE APPLICATION -->
-<h2 id="live-application"> :computer: Live Web Application</h2>
+This restructuring improves both model stability and prediction reliability.
 
-<p align="justify">
-  Our live testing application includes a modern dashboard built with React. It supports real-time mobile testing over a local network and features live data visualizations using <code>react-chartjs-2</code>.
-</p>
+---
 
-<p><b>How to run:</b></p>
-<pre><code># 1. Start the Flask server / Backend API
+## Model Architecture  
+
+**Input Configuration:**
+- 10-second sliding window  
+- 50% overlap  
+- Shape: `200 × 6` (time steps × sensor channels)
+
+### Pipeline:
+
+1. **Conv1D Layers**
+   - Extract spatial features across sensor channels  
+   - Includes Batch Normalization and MaxPooling  
+
+2. **LSTM Layer**
+   - Captures temporal dependencies  
+   - Learns motion patterns over time  
+
+3. **Dense Layer (Softmax)**
+   - Outputs probabilities across 8 activity classes  
+
+---
+
+## System Design  
+
+### Frontend:
+- React (Vite)  
+- Chart.js for real-time visualization  
+- Mobile browser sensor integration  
+
+### Backend:
+- Flask API  
+- TensorFlow/Keras model inference  
+
+### Data Flow:
+Mobile Sensors → React → Flask API → Model → Prediction → UI  
+
+---
+
+## Results  
+
+- Accuracy: ~73% (8-class classification)  
+- Improved performance compared to baseline CNN models  
+- More stable predictions due to class consolidation  
+
+---
+
+## Setup Instructions  
+
+```bash
+# Backend
 cd backend
+pip install -r requirements.txt
 python app.py
 
-# 2. Run the React application
+# Frontend
 cd frontend
 npm install
 npm run dev
-
-# 3. Connect via mobile device
-# Navigate to the Network IP generated by Vite using your mobile browser.
-</code></pre>
-
-![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
-
-<!-- RESULTS -->
-<h2 id="results"> :mag: Results</h2>
-
-<p align="justify">
-  By migrating from a standard 2D CNN to a <b>1D-CNN + LSTM architectural hybrid</b>, and by consolidating redundant micro-activities into robust categories, the final model achieved an accuracy of <b>~73%</b> on the complex 8-class test set. 
-</p>
-
-![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
-
-<!-- CONTRIBUTORS -->
-<h2 id="contributors"> :scroll: Contributors</h2>
-
-<p>
-  :boy: <b>Vansh Tambi</b> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>vanshtambi@gmail.com</a> <br><br>
-  
-  :boy: <b>Vivek Pasi</b> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>vivekpasi43@gmail.com</a> <br>
-</p>
