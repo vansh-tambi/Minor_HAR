@@ -61,18 +61,22 @@ export const useAccelerometer = (backendUrl, onWindowReady) => {
   };
 
   const handleMotion = (e) => {
-    // Accelerometer data
     const acc = e.accelerationIncludingGravity;
     // Gyroscope data (rotationRate gives angular velocity in deg/s)
     const rot = e.rotationRate;
+    
+    // Neural Network is trained on gyroscope data in rad/s.
+    const DEG_TO_RAD = Math.PI / 180;
 
     sensorRef.current = {
       ax: acc?.x || 0,
       ay: acc?.y || 0,
       az: acc?.z || 0,
-      gx: rot?.alpha || 0,
-      gy: rot?.beta  || 0,
-      gz: rot?.gamma || 0,
+      // API documentation: 
+      // beta = X-axis, gamma = Y-axis, alpha = Z-axis
+      gx: (rot?.beta || 0) * DEG_TO_RAD,
+      gy: (rot?.gamma || 0) * DEG_TO_RAD,
+      gz: (rot?.alpha || 0) * DEG_TO_RAD,
     };
   };
 

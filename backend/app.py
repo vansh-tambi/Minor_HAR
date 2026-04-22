@@ -138,6 +138,14 @@ def predict():
                 "status": "error",
             }), 400
 
+        # ── Motion Thresholding (Table/Still override) ────────────────────
+        # Calculate total variance across accelerometer and gyroscope channels
+        accel_var = np.sum(np.var(data[:, 0:3], axis=0))
+        gyro_var = np.sum(np.var(data[:, 3:6], axis=0))
+        
+        # If variance is incredibly low, the device is sitting passively
+        is_table_still = (accel_var < 0.15) and (gyro_var < 0.15)
+
         # ── Normalize ─────────────────────────────────────────────────────
         if scaler is not None:
             data = scaler.transform(data)
@@ -147,17 +155,39 @@ def predict():
             data = _scaler.fit_transform(data)
 
         # ── Predict ───────────────────────────────────────────────────────
-        X = data.reshape(1, FRAME_SIZE, NUM_CHANNELS)
-        probs = model.predict(X, verbose=0)[0]        # shape: (num_classes,)
-        pred_idx   = int(np.argmax(probs))
-        confidence = float(probs[pred_idx])
-        activity   = activity_names.get(pred_idx, f"Class {pred_idx}")
+        probs = np.zeros(len(activity_names))
+        
+        if is_table_still:
+            # Force "Still" override
+            activity = "Still"
+            confidence = 1.0
+            
+            # Find the dict index for "Still"
+            still_idx = -1
+            for k, v in activity_names.items():
+                if v == "Still":
+                    still_idx = k
+                    break
+            
+            if still_idx != -1:
+                probs[still_idx] = 1.0
+                pred_idx = still_idx
+            else:
+                pred_idx = 0
+                
+        else:
+            X = data.reshape(1, FRAME_SIZE, NUM_CHANNELS)
+            probs = model.predict(X, verbose=0)[0]        # shape: (num_classes,)
+            pred_idx   = int(np.argmax(probs))
+            confidence = float(probs[pred_idx])
+            activity   = activity_names.get(pred_idx, f"Class {pred_idx}")
 
-        # ── Confidence threshold ──────────────────────────────────────────
-        if confidence < CONFIDENCE_THRESHOLD:
-            activity = "Uncertain"
+            # ── Confidence threshold ──────────────────────────────────────────
+            if confidence < CONFIDENCE_THRESHOLD:
+                activity = "Uncertain"
 
         # ── Smoothing (majority vote) ─────────────────────────────────────
+
         recent_predictions.append(activity)
         smoothed_activity = _majority_vote(recent_predictions)
 
