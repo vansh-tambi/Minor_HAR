@@ -28,8 +28,8 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 
 from keras.models import Sequential
 from keras.layers import (
-    Conv2D, MaxPooling2D, Dense, Dropout,
-    BatchNormalization, GlobalAveragePooling2D
+    Conv1D, MaxPooling1D, Dense, Dropout,
+    BatchNormalization, LSTM
 )
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -41,14 +41,14 @@ OUTPUT_DIR      = "backend"
 FREQUENCY       = 20        # Hz
 TIME_PERIOD     = 10        # seconds
 FRAME_SIZE      = FREQUENCY * TIME_PERIOD   # 200 samples per window
-STEP_SIZE       = FRAME_SIZE // 2           # 50% overlap → ~2x more training data
+STEP_SIZE       = FRAME_SIZE // 2           # 50% overlap -> ~2x more training data
 NUM_CHANNELS    = 6                         # accel(X,Y,Z) + gyro(X,Y,Z)
 EPOCHS          = 30
 BATCH_SIZE      = 64
 TEST_SIZE       = 0.2
 RANDOM_STATE    = 42
 
-# ── Merge original 18 codes → 8 simplified classes ───────────────────────────
+# ── Merge original 18 codes -> 8 simplified classes ───────────────────────────
 # Original codes: A=Walking, B=Jogging, C=Stairs, D=Sitting, E=Standing,
 #   F=Typing, G=Brushing Teeth, H=Eating Soup, I=Eating Chips, J=Eating Pasta,
 #   K=Drinking, L=Eating Sandwich, M=Kicking, O=Playing Catch, P=Dribbling,
@@ -57,8 +57,8 @@ ACTIVITY_MERGE = {
     "A": "Walking",
     "B": "Jogging",
     "C": "Stairs",
-    "D": "Still",            # Sitting → Still
-    "E": "Still",            # Standing → Still
+    "D": "Still",            # Sitting -> Still
+    "E": "Still",            # Standing -> Still
     "F": "Hand Activity",    # Typing
     "G": "Hand Activity",    # Brushing Teeth
     "H": "Eating",           # Eating Soup
@@ -94,7 +94,7 @@ def load_and_merge_data(accel_path, gyro_path):
     gyro_files  = sorted([f for f in os.listdir(gyro_path)  if f.endswith(".csv")])
     print(f"  Found {len(accel_files)} accel files, {len(gyro_files)} gyro files.")
 
-    # Build a lookup: subject_id → (accel_file, gyro_file)
+    # Build a lookup: subject_id -> (accel_file, gyro_file)
     accel_by_subject = {}
     for f in accel_files:
         # filename like: data_1600_accel_phone.csv
@@ -233,36 +233,26 @@ def _get_frames(df, feature_cols, frame_size, step_size):
 
 def create_model(input_shape, num_classes):
     """
-    Build a deeper CNN with BatchNormalization for better accuracy.
-    Input shape: (FRAME_SIZE, NUM_CHANNELS, 1) = (200, 6, 1)
+    Build a hybrid Conv1D + LSTM model for better time-series accuracy.
+    Input shape: (FRAME_SIZE, NUM_CHANNELS) = (200, 6)
     """
     model = Sequential([
-        # Block 1
-        Conv2D(64, (5, 1), activation="relu", padding="same", input_shape=input_shape),
+        # Feature Extraction: 1D Convolutions
+        Conv1D(64, kernel_size=5, activation="relu", padding="same", input_shape=input_shape),
         BatchNormalization(),
-        Conv2D(64, (5, 1), activation="relu", padding="same"),
-        BatchNormalization(),
-        MaxPooling2D(pool_size=(2, 1)),
-        Dropout(0.2),
+        MaxPooling1D(pool_size=2),
 
-        # Block 2
-        Conv2D(128, (3, 1), activation="relu", padding="same"),
+        Conv1D(128, kernel_size=3, activation="relu", padding="same"),
         BatchNormalization(),
-        Conv2D(128, (3, 1), activation="relu", padding="same"),
-        BatchNormalization(),
-        MaxPooling2D(pool_size=(2, 1)),
-        Dropout(0.3),
+        MaxPooling1D(pool_size=2),
 
-        # Block 3
-        Conv2D(256, (3, 1), activation="relu", padding="same"),
-        BatchNormalization(),
-        GlobalAveragePooling2D(),
+        # Temporal Learning: LSTM
+        LSTM(64, return_sequences=False),
+        Dropout(0.5),
 
         # Classifier
-        Dense(256, activation="relu"),
+        Dense(64, activation="relu"),
         BatchNormalization(),
-        Dropout(0.5),
-        Dense(128, activation="relu"),
         Dropout(0.3),
         Dense(num_classes, activation="softmax"),
     ])
@@ -313,7 +303,7 @@ def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
         f.write("Classification Report\n")
         f.write("=" * 56 + "\n")
         f.write(report)
-    print(f"\n  Report saved → {report_path}")
+    print(f"\n  Report saved -> {report_path}")
 
     # Confusion Matrix
     cm = confusion_matrix(y_test, y_pred)
@@ -325,7 +315,7 @@ def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
     )
     plt.xlabel("Predicted", fontsize=12)
     plt.ylabel("Actual", fontsize=12)
-    plt.title(f"Confusion Matrix — HAR CNN v2 (Accuracy: {acc*100:.1f}%)", fontsize=14)
+    plt.title(f"Confusion Matrix — Hybrid Conv1D+LSTM (Accuracy: {acc*100:.1f}%)", fontsize=14)
     plt.xticks(rotation=45, ha="right", fontsize=9)
     plt.yticks(rotation=0, fontsize=9)
     plt.tight_layout()
@@ -333,7 +323,7 @@ def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
     cm_path = os.path.join(output_dir, "confusion_matrix.png")
     plt.savefig(cm_path, dpi=150)
     plt.close()
-    print(f"  Confusion matrix saved → {cm_path}")
+    print(f"  Confusion matrix saved -> {cm_path}")
 
     return acc
 
@@ -349,19 +339,19 @@ def save_artifacts(model, scaler, label_encoder, output_dir):
     # Model
     model_path = os.path.join(output_dir, "har_model.keras")
     model.save(model_path)
-    print(f"  Model saved          → {model_path}")
+    print(f"  Model saved          -> {model_path}")
 
     # Scaler (for 6 channels)
     scaler_path = os.path.join(output_dir, "scaler.pkl")
     with open(scaler_path, "wb") as f:
         pickle.dump(scaler, f)
-    print(f"  Scaler saved         → {scaler_path}")
+    print(f"  Scaler saved         -> {scaler_path}")
 
     # Label encoder
     encoder_path = os.path.join(output_dir, "label_encoder.pkl")
     with open(encoder_path, "wb") as f:
         pickle.dump(label_encoder, f)
-    print(f"  Label encoder saved  → {encoder_path}")
+    print(f"  Label encoder saved  -> {encoder_path}")
 
     # Activity name map: { index: "ClassName" }
     activity_names = {}
@@ -371,7 +361,7 @@ def save_artifacts(model, scaler, label_encoder, output_dir):
     names_path = os.path.join(output_dir, "activity_names.pkl")
     with open(names_path, "wb") as f:
         pickle.dump(activity_names, f)
-    print(f"  Activity names saved → {names_path}")
+    print(f"  Activity names saved -> {names_path}")
     print(f"  Classes: {activity_names}")
 
 
@@ -385,8 +375,8 @@ if __name__ == "__main__":
         dataframes, FRAME_SIZE, STEP_SIZE
     )
 
-    # Reshape to 4D for Conv2D: (samples, timesteps, channels, 1)
-    X_all = X_all.reshape(X_all.shape[0], FRAME_SIZE, NUM_CHANNELS, 1)
+    # No reshape needed for Conv1D+LSTM, already (samples, 200, 6)
+    # X_all = X_all.reshape(X_all.shape[0], FRAME_SIZE, NUM_CHANNELS)
 
     # 3. Train / test split
     X_train, X_test, y_train, y_test = train_test_split(
@@ -402,7 +392,7 @@ if __name__ == "__main__":
     print("  TRAINING MODEL")
     print("=" * 60)
     model = create_model(
-        input_shape=(FRAME_SIZE, NUM_CHANNELS, 1),
+        input_shape=(FRAME_SIZE, NUM_CHANNELS),
         num_classes=NUM_CLASSES
     )
     model.summary()

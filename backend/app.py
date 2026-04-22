@@ -147,7 +147,7 @@ def predict():
             data = _scaler.fit_transform(data)
 
         # ── Predict ───────────────────────────────────────────────────────
-        X = data.reshape(1, FRAME_SIZE, NUM_CHANNELS, 1)
+        X = data.reshape(1, FRAME_SIZE, NUM_CHANNELS)
         probs = model.predict(X, verbose=0)[0]        # shape: (num_classes,)
         pred_idx   = int(np.argmax(probs))
         confidence = float(probs[pred_idx])

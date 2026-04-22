@@ -47,8 +47,7 @@
 </p>
 
 <p align="center">
-  <img src="images/WISDM Activities.png" alt="Table1: 18 Activities" width="70%" height="70%">        
-  <!--figcaption>Caption goes here</figcaption-->
+  <b>Activities Tracked:</b> Walking, Jogging, Stairs, Still, Eating, Hand Activity, Active Hands, Sports.
 </p>
 
 ![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
@@ -144,11 +143,7 @@ The following open source packages are used in this project:
 
  _The WISDM dataset is publicly available. Please refer to the [Link](https://archive.ics.uci.edu/ml/datasets/WISDM+Smartphone+and+Smartwatch+Activity+and+Biometrics+Dataset+)_ 
 
-  The following table shows the 18 activities represented in data set.
-</p>
-
-<p align="center">
-  <img src="images/Activity Table.png" alt="Table1: 18 Activities" width="45%" height="45%">
+  The original dataset contains 18 activities. We have consolidated these into 8 robust categories (Walking, Jogging, Stairs, Still, Eating, Hand Activity, Active Hands, and Sports) to significantly improve machine learning accuracy and reduce model confusion.
 </p>
 
 ![-----------------------------------------------------](https://raw.githubusercontent.com/andreasbm/readme/master/assets/lines/rainbow.png)
@@ -321,24 +316,9 @@ All these three approaches used windowing technique to segment the raw time seri
 <h2 id="contributors"> :scroll: Contributors</h2>
 
 <p>
-  :mortar_board: <i>All participants in this project are graduate students in the <a href="https://www.concordia.ca/ginacody/computer-science-software-eng.html">Department of Computer Science and Software Engineering</a> <b>@</b> <a href="https://www.concordia.ca/">Concordia University</a></i> <br> <br>
+  :boy: <b>Vansh Tambi</b> <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>vanshtambi@gmail.com</a> <br><br>
   
-  :woman: <b>Divya Bhagavathiappan Shiva</b> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>divya.bhagavathiappanshiva@mail.concordia.ca</a> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GitHub: <a href="https://github.com/divyabhagavathiappan">@divyabhagavathiappan</a> <br>
-  
-  :woman: <b>Reethu Navale</b> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>reethu.navale@mail.concordia.ca</a> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GitHub: <a href="https://github.com/reethunavale">@reethunavale</a> <br>
-
-  :woman: <b>Mahsa Sadat Afzali Arani</b> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>m_afzali93@yahoo.com</a> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GitHub: <a href="https://github.com/MahsaAfzali">@MahsaAfzali</a> <br>
-
-  :boy: <b>Mohammad Amin Shamshiri</b> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>mohammadamin.shamshiri@mail.concordia.ca</a> <br>
-  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GitHub: <a href="https://github.com/ma-shamshiri">@ma-shamshiri</a> <br>
+  :boy: <b>Vivek Pasi</b> <br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a>vivekpasi43@gmail.com</a> <br>
 </p>
-
-<br>
-✤ <i>This was the final project for the course COMP 6321 - Machine Learning (Fall 2020), at <a href="https://www.concordia.ca/">Concordia University</a><i>
