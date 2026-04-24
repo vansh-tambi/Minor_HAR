@@ -23,8 +23,8 @@ app = Flask(__name__)
 CORS(app)  # Allow browser requests from frontend
 
 # ── Config ────────────────────────────────────────────────────────────────────
-FRAME_SIZE           = 200    # 20 Hz × 10 seconds
-NUM_CHANNELS         = 6      # accel(X,Y,Z) + gyro(X,Y,Z)
+FRAME_SIZE           = 60     # 20 Hz × 3 seconds
+NUM_CHANNELS         = 8      # accel(X,Y,Z) + gyro(X,Y,Z) + mags
 CONFIDENCE_THRESHOLD = 0.45   # below this → "Uncertain" (lowered for 8 classes)
 SMOOTHING_WINDOW     = 3      # majority vote over last N predictions
 
@@ -68,6 +68,54 @@ else:
     print(f"  ✔ Log file exists  → {LOG_PATH}")
 
 
+from scipy.signal import butter, sosfilt
+
+# ── Filter setup ──────────────────────────────────────────────────────────────
+FS = 20.0
+NYQ = 0.5 * FS
+
+# Noise filter (5Hz cutoff)
+sos_noise = butter(3, 5.0 / NYQ, btype='low', output='sos')
+
+# Gravity filter (0.3Hz cutoff)
+sos_gravity = butter(3, 0.3 / NYQ, btype='low', output='sos')
+
+# Global states for continuous filtering across requests
+filter_states_noise = [np.zeros((sos_noise.shape[0], 2)) for _ in range(6)]
+filter_states_gravity = [np.zeros((sos_gravity.shape[0], 2)) for _ in range(3)]
+
+def real_time_preprocess(new_samples_6d):
+    """
+    new_samples_6d: shape (N, 6)
+    Returns: shape (N, 8)
+    """
+    filtered = np.zeros_like(new_samples_6d)
+    
+    # Noise filter
+    for i in range(6):
+        filtered[:, i], filter_states_noise[i] = sosfilt(
+            sos_noise, new_samples_6d[:, i], zi=filter_states_noise[i]
+        )
+        
+    accel = filtered[:, 0:3]
+    gyro = filtered[:, 3:6]
+    
+    # Gravity filter
+    gravity = np.zeros_like(accel)
+    for i in range(3):
+        gravity[:, i], filter_states_gravity[i] = sosfilt(
+            sos_gravity, accel[:, i], zi=filter_states_gravity[i]
+        )
+        
+    body_accel = accel - gravity
+    
+    # Magnitudes
+    accel_mag = np.linalg.norm(body_accel, axis=1, keepdims=True)
+    gyro_mag = np.linalg.norm(gyro, axis=1, keepdims=True)
+    
+    return np.hstack((body_accel, gyro, accel_mag, gyro_mag))
+
+
 def _log_prediction(activity, confidence):
     """Append a single prediction row to the CSV log."""
     with open(LOG_PATH, "a", newline="") as f:
@@ -102,7 +150,7 @@ def predict():
     """
     Expects JSON body:
     {
-        "data": [[ax,ay,az,gx,gy,gz], ... ]   ← exactly 200 rows × 6 channels
+        "data": [[ax,ay,az,gx,gy,gz], ... ]   ← exactly 60 rows × 6 channels
     }
     Returns:
     {
@@ -132,14 +180,17 @@ def predict():
                 "status": "error",
             }), 400
 
-        if data.ndim != 2 or data.shape[1] != NUM_CHANNELS:
+        if data.ndim != 2 or data.shape[1] != 6:
             return jsonify({
-                "error": f"Each sample must have {NUM_CHANNELS} channels (accel XYZ + gyro XYZ), got shape {data.shape}",
+                "error": f"Each sample must have 6 channels (accel XYZ + gyro XYZ), got shape {data.shape}",
                 "status": "error",
             }), 400
 
+        # ── Preprocess (Filter + Add Magnitudes) ──────────────────────────
+        data_processed = real_time_preprocess(data) # Output shape: (N, 8)
+
         # ── Motion Thresholding (Table/Still override) ────────────────────
-        # Calculate total variance across accelerometer and gyroscope channels
+        # Calculate total variance across accelerometer and gyroscope channels on raw data
         accel_var = np.sum(np.var(data[:, 0:3], axis=0))
         gyro_var = np.sum(np.var(data[:, 3:6], axis=0))
         
@@ -148,11 +199,11 @@ def predict():
 
         # ── Normalize ─────────────────────────────────────────────────────
         if scaler is not None:
-            data = scaler.transform(data)
+            data_processed = scaler.transform(data_processed)
         else:
             from sklearn.preprocessing import StandardScaler as _SS
             _scaler = _SS()
-            data = _scaler.fit_transform(data)
+            data_processed = _scaler.fit_transform(data_processed)
 
         # ── Predict ───────────────────────────────────────────────────────
         probs = np.zeros(len(activity_names))
@@ -176,7 +227,7 @@ def predict():
                 pred_idx = 0
                 
         else:
-            X = data.reshape(1, FRAME_SIZE, NUM_CHANNELS)
+            X = data_processed.reshape(1, FRAME_SIZE, NUM_CHANNELS)
             probs = model.predict(X, verbose=0)[0]        # shape: (num_classes,)
             pred_idx   = int(np.argmax(probs))
             confidence = float(probs[pred_idx])

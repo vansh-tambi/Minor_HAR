@@ -6,9 +6,9 @@ from scipy import stats
 import pickle
 
 # Configuration
-WINDOW_SIZE = 200
-STEP_SIZE = 100
-CHANNELS = 6
+WINDOW_SIZE = 60
+STEP_SIZE = 30
+CHANNELS = 8
 
 ACTIVITY_MERGE = {
     # WISDM (18 -> 8)
@@ -28,9 +28,49 @@ ACTIVITY_MERGE = {
     "4": "Still", "5": "Still", "6": "Still"
 }
 
+from scipy.signal import butter, sosfiltfilt
+
+# 1. Filter Design
+FS = 20.0 # Sampling rate in Hz
+NYQ = 0.5 * FS
+
+# Noise filter (5Hz cutoff)
+sos_noise = butter(3, 5.0 / NYQ, btype='low', output='sos')
+
+# Gravity filter (0.3Hz cutoff)
+sos_gravity = butter(3, 0.3 / NYQ, btype='low', output='sos')
+
+def preprocess_window(window_6d):
+    """
+    Input: (N, 6) array [acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z]
+    Output: (N, 8) array [body_acc_xyz, gyro_xyz, acc_mag, gyro_mag]
+    """
+    # 2. Noise Filtering
+    filtered = np.zeros_like(window_6d)
+    for i in range(6):
+        filtered[:, i] = sosfiltfilt(sos_noise, window_6d[:, i])
+    
+    accel = filtered[:, 0:3]
+    gyro = filtered[:, 3:6]
+    
+    # 3. Gravity Separation
+    gravity = np.zeros_like(accel)
+    for i in range(3):
+        gravity[:, i] = sosfiltfilt(sos_gravity, accel[:, i])
+        
+    body_accel = accel - gravity
+    
+    # 4. Feature Extraction (Magnitude)
+    accel_mag = np.linalg.norm(body_accel, axis=1, keepdims=True)
+    gyro_mag = np.linalg.norm(gyro, axis=1, keepdims=True)
+    
+    # 5. Concatenate to 8 channels
+    enhanced_window = np.hstack((body_accel, gyro, accel_mag, gyro_mag))
+    
+    return enhanced_window
+
 def clean_wisdm(file_path):
     try:
-        # Some rows have extra columns or semicolons, reading manually is safer
         records = []
         with open(file_path, 'r') as f:
             for line in f:
@@ -87,6 +127,7 @@ def extract_wisdm():
             
             for i in range(0, min_len - WINDOW_SIZE, STEP_SIZE):
                 window = merged[i:i+WINDOW_SIZE]
+                window = preprocess_window(window)
                 all_frames.append(window)
                 all_labels.append(label)
                 
@@ -135,6 +176,7 @@ def extract_heterogeneity():
             
             for i in range(0, min_len - WINDOW_SIZE, STEP_SIZE):
                 window = merged[i:i+WINDOW_SIZE]
+                window = preprocess_window(window)
                 all_frames.append(window)
                 all_labels.append(label)
                 
@@ -172,17 +214,154 @@ def extract_uci_har():
             
             window_128 = np.column_stack([channels[c][i] for c in range(6)]) # (128, 6)
             
-            # zoom to (200, 6)
-            window_200 = zoom(window_128, (200/128, 1))
+            # zoom to (60, 6)
+            window_60 = zoom(window_128, (60/128, 1))
             
-            all_frames.append(window_200)
+            window_processed = preprocess_window(window_60)
+            
+            all_frames.append(window_processed)
             all_labels.append(label)
             
     return all_frames, all_labels
 
+
+# ── Custom Mobile CSV Data ────────────────────────────────────────────────────
+def extract_custom_csv(csv_path, activity_label):
+    """
+    Parse custom mobile sensor CSV recorded from a phone app.
+    Format: Timestamp, Sensor Type, Value1, Value2, Value3
+    
+    Sensor Types (Android):
+      1 = Accelerometer (m/s²)
+      4 = Gyroscope (rad/s)
+    
+    Extracts accel + gyro, aligns by nearest timestamp, creates windows.
+    """
+    print(f"  Processing custom CSV: {csv_path} -> {activity_label}")
+    
+    if not os.path.exists(csv_path):
+        print(f"    ⚠ File not found: {csv_path}")
+        return [], []
+    
+    df = pd.read_csv(csv_path)
+    
+    # Extract accelerometer (type 1) and gyroscope (type 4)
+    accel = df[df['Sensor Type'] == 1][['Timestamp', 'Value1', 'Value2', 'Value3']].copy()
+    gyro = df[df['Sensor Type'] == 4][['Timestamp', 'Value1', 'Value2', 'Value3']].copy()
+    
+    # Average duplicate timestamps (batch sensor events)
+    accel = accel.groupby('Timestamp').mean().reset_index().sort_values('Timestamp')
+    gyro = gyro.groupby('Timestamp').mean().reset_index().sort_values('Timestamp')
+    
+    print(f"    Accel readings: {len(accel)}, Gyro readings: {len(gyro)}")
+    
+    if len(accel) < WINDOW_SIZE or len(gyro) < WINDOW_SIZE:
+        print(f"    ⚠ Not enough data for even one window")
+        return [], []
+    
+    # Merge by nearest timestamp using merge_asof
+    accel = accel.rename(columns={'Value1': 'ax', 'Value2': 'ay', 'Value3': 'az'})
+    gyro = gyro.rename(columns={'Value1': 'gx', 'Value2': 'gy', 'Value3': 'gz'})
+    
+    merged = pd.merge_asof(
+        accel.sort_values('Timestamp'),
+        gyro.sort_values('Timestamp'),
+        on='Timestamp',
+        direction='nearest',
+        tolerance=500  # max 500ms gap
+    ).dropna()
+    
+    print(f"    Merged paired readings: {len(merged)}")
+    
+    if len(merged) < WINDOW_SIZE:
+        print(f"    ⚠ Not enough paired data")
+        return [], []
+    
+    # Build 6-channel array: [acc_x, acc_y, acc_z, gyro_x, gyro_y, gyro_z]
+    data_6ch = merged[['ax', 'ay', 'az', 'gx', 'gy', 'gz']].values
+    
+    # Create windows
+    all_frames = []
+    all_labels = []
+    
+    for i in range(0, len(data_6ch) - WINDOW_SIZE, STEP_SIZE):
+        window = data_6ch[i:i + WINDOW_SIZE]
+        window_processed = preprocess_window(window)
+        all_frames.append(window_processed)
+        all_labels.append(activity_label)
+    
+    print(f"    Created {len(all_frames)} windows")
+    return all_frames, all_labels
+
+
+def augment_windows(frames, labels, num_augments=15):
+    """
+    Create augmented copies of windows using noise injection, scaling,
+    and time warping to boost representation of real recorded data.
+    """
+    print(f"  Augmenting {len(frames)} windows x{num_augments}...")
+    aug_frames = []
+    aug_labels = []
+    
+    for frame, label in zip(frames, labels):
+        frame = np.array(frame)
+        for _ in range(num_augments):
+            aug = frame.copy()
+            
+            # 1. Add Gaussian noise (small)
+            noise = np.random.normal(0, 0.02, aug.shape)
+            aug = aug + noise
+            
+            # 2. Random scaling (95%-105%)
+            scale = np.random.uniform(0.95, 1.05)
+            aug = aug * scale
+            
+            # 3. Random time shift (shift by 0-3 samples)
+            shift = np.random.randint(0, 4)
+            if shift > 0:
+                aug = np.roll(aug, shift, axis=0)
+            
+            aug_frames.append(aug)
+            aug_labels.append(label)
+    
+    print(f"    Created {len(aug_frames)} augmented windows")
+    return aug_frames, aug_labels
+
+
+def extract_all_custom():
+    """Extract and augment all custom recorded CSV data."""
+    print("\nProcessing Custom Mobile Data...")
+    
+    custom_files = {
+        "still data.csv": "Still",
+        "jogging.csv": "Jogging",
+        "eating.csv": "Eating",
+    }
+    
+    all_frames = []
+    all_labels = []
+    
+    for csv_file, activity in custom_files.items():
+        csv_path = csv_file  # Files are in the project root
+        f, l = extract_custom_csv(csv_path, activity)
+        
+        if f:
+            # Add original windows
+            all_frames.extend(f)
+            all_labels.extend(l)
+            
+            # Add augmented windows (15x to boost real data representation)
+            af, al = augment_windows(f, l, num_augments=15)
+            all_frames.extend(af)
+            all_labels.extend(al)
+    
+    return all_frames, all_labels
+
+
 if __name__ == "__main__":
     frames, labels = [], []
     
+    # 1. Existing datasets
     f1, l1 = extract_uci_har()
     frames.extend(f1); labels.extend(l1)
     
@@ -192,12 +371,22 @@ if __name__ == "__main__":
     f3, l3 = extract_wisdm()
     frames.extend(f3); labels.extend(l3)
     
+    # 2. Custom real recorded data (with augmentation)
+    f4, l4 = extract_all_custom()
+    frames.extend(f4); labels.extend(l4)
+    
     X = np.array(frames)
     y = np.array(labels)
     
-    print(f"Total Frames: {X.shape}")
+    print(f"\nTotal Frames: {X.shape}")
     print(f"Total Labels: {y.shape}")
+    
+    # Print class distribution
+    unique, counts = np.unique(y, return_counts=True)
+    print("\nClass distribution:")
+    for u, c in zip(unique, counts):
+        print(f"  {u:15s}: {c:6d} ({c/len(y)*100:.1f}%)")
     
     np.save("X_all.npy", X)
     np.save("y_all.npy", y)
-    print("Saved to X_all.npy and y_all.npy")
+    print("\nSaved to X_all.npy and y_all.npy")

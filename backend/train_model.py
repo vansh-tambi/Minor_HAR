@@ -29,9 +29,9 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 # ── Config ────────────────────────────────────────────────────────────────────
 OUTPUT_DIR      = "backend"
 FREQUENCY       = 20        # Hz
-TIME_PERIOD     = 10        # seconds
-FRAME_SIZE      = FREQUENCY * TIME_PERIOD   # 200 samples per window
-NUM_CHANNELS    = 6                         # accel(X,Y,Z) + gyro(X,Y,Z)
+TIME_PERIOD     = 3         # seconds
+FRAME_SIZE      = FREQUENCY * TIME_PERIOD   # 60 samples per window
+NUM_CHANNELS    = 8                         # accel(X,Y,Z) + gyro(X,Y,Z) + mags
 EPOCHS          = 30
 BATCH_SIZE      = 128
 TEST_SIZE       = 0.2

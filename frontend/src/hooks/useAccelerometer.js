@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-const FRAME_SIZE = 200;
+const FRAME_SIZE = 60;
 const FREQ = 20; // Hz
 const INTERVAL = 1000 / FREQ;
 
