@@ -43,8 +43,10 @@ const Login = ({ backendUrl, setAuthToken, setUser }) => {
           <GoogleLogin
             onSuccess={handleSuccess}
             onError={handleError}
+            useOneTap
             theme="filled_black"
             shape="rectangular"
+            ux_mode="popup" 
           />
         </div>
       </motion.div>
