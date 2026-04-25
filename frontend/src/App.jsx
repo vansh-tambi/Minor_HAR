@@ -1,19 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAccelerometer } from './hooks/useAccelerometer';
 import SensorChart from './components/SensorChart';
+import Login from './components/Login';
+import Reports from './components/Reports';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Network, Activity, Play, Square, AlertCircle, CheckCircle2, Radar, Target } from 'lucide-react';
+import { Network, Activity, Play, Square, AlertCircle, CheckCircle2, Radar, Target, LayoutDashboard, FileText, LogOut } from 'lucide-react';
 
 function App() {
   const [backendUrl, setBackendUrl] = useState(import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000');
   const [prediction, setPrediction] = useState(null);
   const [status, setStatus] = useState({ msg: 'System Ready', type: 'ok' });
+  
+  // Auth & Routing State
+  const [authToken, setAuthToken] = useState(localStorage.getItem('har_auth_token') || null);
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('har_user')) || null);
+  const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' or 'reports'
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    setUser(null);
+    localStorage.removeItem('har_auth_token');
+    localStorage.removeItem('har_user');
+  };
 
   const onWindowReady = async (windowData) => {
     setStatus({ msg: 'Processing data...', type: 'ok' });
     try {
-      const response = await axios.post(`${backendUrl}/predict`, { data: windowData });
+      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      const response = await axios.post(`${backendUrl}/predict`, 
+        { data: windowData },
+        { headers }
+      );
       const result = response.data;
       
       setPrediction(result);
@@ -43,6 +61,26 @@ function App() {
     setStatus({ msg: 'Stream offline', type: '' });
   };
 
+  if (!authToken) {
+    return <Login backendUrl={backendUrl} setAuthToken={setAuthToken} setUser={setUser} />;
+  }
+
+  if (currentView === 'reports') {
+    return (
+      <>
+        <div style={{ position: 'fixed', top: '16px', right: '16px', display: 'flex', gap: '8px', zIndex: 100 }}>
+          <button className="btn-stop" onClick={() => setCurrentView('dashboard')} style={{ padding: '8px 12px' }}>
+            <LayoutDashboard size={16} /> Dashboard
+          </button>
+          <button className="btn-stop" onClick={handleLogout} style={{ padding: '8px 12px' }}>
+            <LogOut size={16} />
+          </button>
+        </div>
+        <Reports backendUrl={backendUrl} authToken={authToken} />
+      </>
+    );
+  }
+
   // derived values
   const activity = prediction?.activity || 'AWAITING DATA';
   const confidence = prediction?.confidence || 0;
@@ -65,7 +103,6 @@ function App() {
     ? Object.entries(prediction.all_probs).sort((a, b) => b[1] - a[1]).slice(0, 5)
     : [];
 
-  // Animation variants
   const cardVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: (i) => ({
@@ -78,7 +115,13 @@ function App() {
   return (
     <>
       <div style={{ position: 'fixed', top: '16px', right: '16px', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 100 }}>
-        <Network size={16} color="var(--text-muted)" />
+        <button className="btn-stop" onClick={() => setCurrentView('reports')} style={{ padding: '8px 12px' }}>
+          <FileText size={16} /> Reports
+        </button>
+        <button className="btn-stop" onClick={handleLogout} style={{ padding: '8px 12px' }}>
+          <LogOut size={16} />
+        </button>
+        <Network size={16} color="var(--text-muted)" style={{ marginLeft: '12px' }} />
         <input 
             type="text" 
             value={backendUrl}
@@ -100,7 +143,7 @@ function App() {
 
       <motion.div className="header" initial={{opacity: 0, y: -10}} animate={{opacity: 1, y: 0}} transition={{duration: 0.4}}>
         <h1><Activity size={28} color="var(--primary-color)" /> Activity Recognition</h1>
-        <div className="subtitle">Real-time human activity monitoring dashboard</div>
+        <div className="subtitle">Welcome, {user?.name || 'User'}</div>
       </motion.div>
 
       <div className="grid">

@@ -17,7 +17,9 @@ This system is designed for real-world usability rather than basic motion classi
 
 - Real-time sensor data streaming from mobile browser  
 - Hybrid deep learning model (Conv1D + LSTM)  
-- Live visualization dashboard using React and Chart.js  
+- Live visualization dashboard using React (Professional Dark Mode UI)
+- User Authentication (Google Auth) & Data Logging (MongoDB)
+- Daily Activity Summaries powered by Gemini AI
 - Low-latency predictions via Flask API  
 - Optimized 8-class activity classification  
 
@@ -39,7 +41,7 @@ This system improves performance by:
 
 ## Dataset & Classes  
 
-The model was trained using an aggregation of three major open-source datasets: the **WISDM (Wireless Sensor Data Mining)** dataset, the **Heterogeneity Activity Recognition** dataset, and the **UCI HAR** dataset. By unifying these datasets, we created a massive repository of robust human movement patterns across diverse device sensors, sampling frequencies, and overlapping activities.
+The model was trained using a custom-prioritized aggregation of datasets. Real-world mobile data recorded by the users was heavily augmented (30x) and set as the absolute priority. This was supplemented by capping classes from three major open-source datasets: **WISDM (Wireless Sensor Data Mining)**, **Heterogeneity Activity Recognition**, and **UCI HAR**. By unifying these datasets while ensuring the custom data dominates, we created a robust, highly accurate model for real-world scenarios.
 
 ### Final Classes:
 - Walking  
@@ -95,8 +97,8 @@ Mobile Sensors → React → Flask API → Model → Prediction → UI
 
 ## Results  
 
-- **Accuracy: ~87%** (Optimized 8-class classification)  
-- By migrating from a standard 2D CNN to a **1D-CNN + LSTM architectural hybrid**, and by consolidating over 67,000 unified movement windows, the final model achieved high stability and recognition precision for complex tasks like "Eating" and "Stationary Still".
+- **Accuracy: ~83%** (Specifically 82.99%)
+- By migrating from a standard 2D CNN to a deeper **1D-CNN + LSTM architectural hybrid** and implementing aggressive data augmentation (30x) on real user data, the model achieved extremely high precision for complex tasks like "Eating" (96% precision) and "Stationary Still" (94% precision).
 
 ---
 
