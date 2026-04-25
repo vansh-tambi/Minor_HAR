@@ -12,19 +12,19 @@ STEP_SIZE = 30
 CHANNELS = 8
 
 ACTIVITY_MERGE = {
-    # WISDM (18 -> 8)
+    # WISDM (18 -> 7)
     "A": "Walking", "B": "Jogging", "C": "Stairs",
     "D": "Still", "E": "Still",
     "F": "Hand Activity", "G": "Hand Activity", "Q": "Hand Activity",
     "H": "Eating", "I": "Eating", "J": "Eating", "K": "Eating", "L": "Eating",
     "M": "Sports", "O": "Sports", "P": "Sports",
-    "R": "Active Hands", "S": "Active Hands",
+    "R": "Hand Activity", "S": "Hand Activity",  # Was "Active Hands" — merged with Hand Activity
     
-    # Heterogeneity (6 -> 4 mapped to the 8)
+    # Heterogeneity (6 -> 4 mapped to the 7)
     "walk": "Walking", "sit": "Still", "stand": "Still", 
     "stairsup": "Stairs", "stairsdown": "Stairs", "bike": "Sports",
     
-    # UCI HAR (6 -> 3 mapped to the 8)
+    # UCI HAR (6 -> 3 mapped to the 7)
     "1": "Walking", "2": "Stairs", "3": "Stairs", 
     "4": "Still", "5": "Still", "6": "Still"
 }

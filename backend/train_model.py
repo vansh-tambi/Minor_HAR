@@ -39,8 +39,8 @@ BATCH_SIZE      = 64
 TEST_SIZE       = 0.2
 RANDOM_STATE    = 42
 
-ACTIVITY_NAMES_SORTED = sorted(["Walking", "Jogging", "Stairs", "Still", "Hand Activity", "Eating", "Sports", "Active Hands"])
-NUM_CLASSES = len(ACTIVITY_NAMES_SORTED)  # 8
+ACTIVITY_NAMES_SORTED = sorted(["Walking", "Jogging", "Stairs", "Still", "Hand Activity", "Eating", "Sports"])
+NUM_CLASSES = len(ACTIVITY_NAMES_SORTED)  # 7
 
 def preprocess_numpy(X_file, y_file):
     print("=" * 60)
@@ -205,7 +205,14 @@ def save_artifacts(model, scaler, label_encoder, output_dir):
 
 
 if __name__ == "__main__":
-    X_all, y_all, label_encoder, scaler = preprocess_numpy("X_all.npy", "y_all.npy")
+    # Resolve paths relative to this script (in backend/) to find files in project root
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    ROOT_DIR = os.path.dirname(BASE_DIR)
+    
+    x_path = os.path.join(ROOT_DIR, "X_all.npy")
+    y_path = os.path.join(ROOT_DIR, "y_all.npy")
+
+    X_all, y_all, label_encoder, scaler = preprocess_numpy(x_path, y_path)
 
     X_train, X_test, y_train, y_test = train_test_split(
         X_all, y_all,
