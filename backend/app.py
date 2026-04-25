@@ -28,7 +28,7 @@ import google.generativeai as genai
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, supports_credentials=True, resources={r"/*": {"origins": os.getenv('FRONTEND_ORIGIN', '*'), "allow_headers": "*"}})
 
 # ---- Security headers for Google Sign‑In pop‑ups ----
 # Flask after_request to add COOP & COEP so the popup can communicate with the main page
