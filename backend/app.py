@@ -28,23 +28,26 @@ import google.generativeai as genai
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True, resources={r"/*": {"origins": os.getenv('FRONTEND_ORIGIN', '*'), "allow_headers": "*"}})
 
-# ---- Security headers for Google Sign‑In pop‑ups ----
-# Flask after_request to add COOP & COEP so the popup can communicate with the main page
+# Build allowed origins list — always allow localhost dev + the deployed frontend
+_ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:5174"]
+_PROD_ORIGIN = os.getenv("FRONTEND_ORIGIN", "").strip().rstrip("/")
+if _PROD_ORIGIN:
+    _ALLOWED_ORIGINS.append(_PROD_ORIGIN)
+
+CORS(
+    app,
+    origins=_ALLOWED_ORIGINS,
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+)
+
+# ---- COOP header for Google Sign‑In pop‑up ----
+# Only set COOP — do NOT override CORS headers (flask-cors handles those)
 @app.after_request
-def set_security_headers(response):
-    # Allow pop‑up windows opened by Google to share a browsing context with the opener
+def set_coop_header(response):
     response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
-    # Required when using COOP with resources that may be embedded in the pop‑up
-    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
-    # CORS – restrict to the exact frontend URL (set in env) but fall back to * for dev
-    frontend_origin = os.getenv('FRONTEND_ORIGIN')
-    if frontend_origin:
-        response.headers['Access-Control-Allow-Origin'] = frontend_origin
-    else:
-        response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
     return response
 
 # ── Config & External Services ────────────────────────────────────────────────
