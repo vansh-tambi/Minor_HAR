@@ -30,6 +30,23 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
+# ---- Security headers for Google Sign‑In pop‑ups ----
+# Flask after_request to add COOP & COEP so the popup can communicate with the main page
+@app.after_request
+def set_security_headers(response):
+    # Allow pop‑up windows opened by Google to share a browsing context with the opener
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin-allow-popups'
+    # Required when using COOP with resources that may be embedded in the pop‑up
+    response.headers['Cross-Origin-Embedder-Policy'] = 'require-corp'
+    # CORS – restrict to the exact frontend URL (set in env) but fall back to * for dev
+    frontend_origin = os.getenv('FRONTEND_ORIGIN')
+    if frontend_origin:
+        response.headers['Access-Control-Allow-Origin'] = frontend_origin
+    else:
+        response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
+
 # ── Config & External Services ────────────────────────────────────────────────
 FRAME_SIZE           = 60
 NUM_CHANNELS         = 8
