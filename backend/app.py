@@ -130,6 +130,9 @@ def google_auth():
         return jsonify({"error": "Server missing Google Client ID"}), 500
         
     try:
+        # Debugging: Print first few chars of token and the client ID being used
+        print(f"Verifying token for Client ID: {GOOGLE_CLIENT_ID[:10]}...")
+        
         idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
         email = idinfo["email"]
         name = idinfo.get("name", "")
@@ -145,8 +148,9 @@ def google_auth():
             algorithm="HS256"
         )
         return jsonify({"token": jwt_token, "user": {"email": email, "name": name}})
-    except ValueError:
-        return jsonify({"error": "Invalid token"}), 401
+    except Exception as e:
+        print(f"Google Auth Error: {str(e)}")
+        return jsonify({"error": str(e), "status": "unauthorized"}), 401
 
 
 @app.route("/predict", methods=["POST"])
