@@ -130,12 +130,21 @@ def google_auth():
         return jsonify({"error": "Server missing Google Client ID"}), 500
         
     try:
-        # Debugging: Print first few chars of token and the client ID being used
-        print(f"Verifying token for Client ID: {GOOGLE_CLIENT_ID[:10]}...")
-        
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-        email = idinfo["email"]
-        name = idinfo.get("name", "")
+        if "access_token" in request.json:
+            import requests
+            access_token = request.json.get("access_token")
+            user_info_url = f"https://www.googleapis.com/oauth2/v3/userinfo?access_token={access_token}"
+            resp = requests.get(user_info_url)
+            if resp.status_code != 200:
+                raise Exception("Invalid access token")
+            user_info = resp.json()
+            email = user_info["email"]
+            name = user_info.get("name", "")
+        else:
+            print(f"Verifying token for Client ID: {GOOGLE_CLIENT_ID[:10]}...")
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+            email = idinfo["email"]
+            name = idinfo.get("name", "")
         
         user = db.users.find_one({"email": email})
         if not user:

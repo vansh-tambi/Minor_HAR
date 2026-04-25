@@ -1,29 +1,37 @@
-import React from 'react';
-import { GoogleLogin } from '@react-oauth/google';
+import React, { useState } from 'react';
+import { useGoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
-import { Activity } from 'lucide-react';
+import { Activity, Loader2 } from 'lucide-react';
 import axios from 'axios';
 
 const Login = ({ backendUrl, setAuthToken, setUser }) => {
-  const handleSuccess = async (credentialResponse) => {
-    try {
-      const res = await axios.post(`${backendUrl}/api/auth/google`, {
-        token: credentialResponse.credential
-      });
-      const { token, user } = res.data;
-      setAuthToken(token);
-      setUser(user);
-      localStorage.setItem('har_auth_token', token);
-      localStorage.setItem('har_user', JSON.stringify(user));
-    } catch (err) {
-      console.error('Login failed:', err);
-      alert('Login failed. Ensure backend is running and Google Client ID is configured.');
-    }
-  };
+  const [loading, setLoading] = useState(false);
 
-  const handleError = () => {
-    console.error('Google Login Failed');
-  };
+  const login = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setLoading(true);
+        // We use the robust access_token approach to bypass Cross-Origin-Opener-Policy errors
+        const res = await axios.post(`${backendUrl}/api/auth/google`, {
+          access_token: tokenResponse.access_token
+        });
+        const { token, user } = res.data;
+        setAuthToken(token);
+        setUser(user);
+        localStorage.setItem('har_auth_token', token);
+        localStorage.setItem('har_user', JSON.stringify(user));
+      } catch (err) {
+        console.error('Login failed:', err);
+        alert('Login failed. Ensure backend is running and Google Client ID is configured.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    onError: (error) => {
+      console.error('Google Login Failed', error);
+      alert('Google Login Failed: ' + (error?.error || 'Unknown error'));
+    }
+  });
 
   return (
     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
@@ -40,14 +48,19 @@ const Login = ({ backendUrl, setAuthToken, setUser }) => {
         </p>
         
         <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <GoogleLogin
-            onSuccess={handleSuccess}
-            onError={handleError}
-            useOneTap
-            theme="filled_black"
-            shape="rectangular"
-            ux_mode="popup" 
-          />
+          <button 
+            className="btn-start" 
+            onClick={() => login()} 
+            disabled={loading}
+            style={{ width: 'auto', padding: '12px 24px', fontSize: '1rem', background: '#fff', color: '#000', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}
+          >
+            {loading ? <Loader2 className="spin" size={20} /> : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" style={{ width: '20px', height: '20px' }} />
+                Sign in with Google
+              </div>
+            )}
+          </button>
         </div>
       </motion.div>
     </div>
