@@ -21,8 +21,10 @@ from sklearn.metrics import classification_report, confusion_matrix, accuracy_sc
 from keras.models import Sequential
 from keras.layers import (
     Conv1D, MaxPooling1D, Dense, Dropout,
-    BatchNormalization, LSTM
+    BatchNormalization, LSTM, Bidirectional,
+    GlobalAveragePooling1D
 )
+from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
@@ -32,8 +34,8 @@ FREQUENCY       = 20        # Hz
 TIME_PERIOD     = 3         # seconds
 FRAME_SIZE      = FREQUENCY * TIME_PERIOD   # 60 samples per window
 NUM_CHANNELS    = 8                         # accel(X,Y,Z) + gyro(X,Y,Z) + mags
-EPOCHS          = 30
-BATCH_SIZE      = 128
+EPOCHS          = 60
+BATCH_SIZE      = 64
 TEST_SIZE       = 0.2
 RANDOM_STATE    = 42
 
@@ -71,25 +73,41 @@ def preprocess_numpy(X_file, y_file):
 
 def create_model(input_shape, num_classes):
     """
-    Build a hybrid Conv1D + LSTM model for better time-series accuracy.
-    Input shape: (FRAME_SIZE, NUM_CHANNELS) = (200, 6)
+    Build a deep hybrid Conv1D + LSTM model for maximum accuracy.
+    Input shape: (FRAME_SIZE, NUM_CHANNELS) = (60, 8)
     """
     model = Sequential([
-        # Feature Extraction: 1D Convolutions
-        Conv1D(64, kernel_size=5, activation="relu", padding="same", input_shape=input_shape),
+        # Feature Extraction Block 1
+        Conv1D(64, kernel_size=5, activation="relu", padding="same",
+               input_shape=input_shape, kernel_regularizer=l2(1e-4)),
+        BatchNormalization(),
+        Conv1D(64, kernel_size=3, activation="relu", padding="same",
+               kernel_regularizer=l2(1e-4)),
         BatchNormalization(),
         MaxPooling1D(pool_size=2),
+        Dropout(0.2),
 
-        Conv1D(128, kernel_size=3, activation="relu", padding="same"),
+        # Feature Extraction Block 2
+        Conv1D(128, kernel_size=3, activation="relu", padding="same",
+               kernel_regularizer=l2(1e-4)),
+        BatchNormalization(),
+        Conv1D(128, kernel_size=3, activation="relu", padding="same",
+               kernel_regularizer=l2(1e-4)),
         BatchNormalization(),
         MaxPooling1D(pool_size=2),
+        Dropout(0.3),
 
         # Temporal Learning: LSTM
-        LSTM(64, return_sequences=False),
-        Dropout(0.5),
+        LSTM(128, return_sequences=True, kernel_regularizer=l2(1e-4)),
+        Dropout(0.3),
+        LSTM(64, return_sequences=False, kernel_regularizer=l2(1e-4)),
+        Dropout(0.4),
 
         # Classifier
-        Dense(64, activation="relu"),
+        Dense(128, activation="relu", kernel_regularizer=l2(1e-4)),
+        BatchNormalization(),
+        Dropout(0.4),
+        Dense(64, activation="relu", kernel_regularizer=l2(1e-4)),
         BatchNormalization(),
         Dropout(0.3),
         Dense(num_classes, activation="softmax"),
@@ -197,8 +215,21 @@ if __name__ == "__main__":
     )
     print(f"\n  Train set: {X_train.shape}  |  Test set: {X_test.shape}")
 
+    # Compute class weights for balanced training
+    from sklearn.utils.class_weight import compute_class_weight
+    class_weights_arr = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(y_train),
+        y=y_train
+    )
+    class_weights = dict(enumerate(class_weights_arr))
+    print("\n  Class weights:")
+    for idx, w in class_weights.items():
+        name = label_encoder.inverse_transform([idx])[0]
+        print(f"    {name:15s}: {w:.3f}")
+
     print("\n" + "=" * 60)
-    print("  TRAINING MODEL")
+    print("  TRAINING MODEL (CUSTOM-PRIORITY, CLASS-WEIGHTED)")
     print("=" * 60)
     model = create_model(
         input_shape=(FRAME_SIZE, NUM_CHANNELS),
@@ -208,17 +239,22 @@ if __name__ == "__main__":
 
     early_stop = EarlyStopping(
         monitor="val_accuracy",
-        patience=5,
+        patience=10,
         restore_best_weights=True,
         verbose=1,
     )
     reduce_lr = ReduceLROnPlateau(
         monitor="val_loss",
         factor=0.5,
-        patience=2,
+        patience=3,
         min_lr=1e-6,
         verbose=1,
     )
+
+    # Shuffle training data for better gradient updates
+    shuffle_idx = np.random.permutation(len(X_train))
+    X_train = X_train[shuffle_idx]
+    y_train = y_train[shuffle_idx]
 
     history = model.fit(
         X_train, y_train,
@@ -226,6 +262,8 @@ if __name__ == "__main__":
         epochs=EPOCHS,
         validation_split=0.2,
         callbacks=[early_stop, reduce_lr],
+        class_weight=class_weights,
+        shuffle=True,
         verbose=1,
     )
 
