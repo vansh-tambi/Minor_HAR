@@ -56,7 +56,7 @@ const SensorChart = ({ data }) => {
       {
         label: 'X-Axis',
         data: Array(MAX_SAMPLES).fill(0),
-        borderColor: '#ff6b8a',
+        borderColor: '#2563eb', // Blue
         borderWidth: 1.5,
         pointRadius: 0,
         tension: 0.4,
@@ -64,7 +64,7 @@ const SensorChart = ({ data }) => {
       {
         label: 'Y-Axis',
         data: Array(MAX_SAMPLES).fill(0),
-        borderColor: '#00f7a6',
+        borderColor: '#10b981', // Green
         borderWidth: 1.5,
         pointRadius: 0,
         tension: 0.4,
@@ -72,7 +72,7 @@ const SensorChart = ({ data }) => {
       {
         label: 'Z-Axis',
         data: Array(MAX_SAMPLES).fill(0),
-        borderColor: '#00f0ff',
+        borderColor: '#ef4444', // Red
         borderWidth: 1.5,
         pointRadius: 0,
         tension: 0.4,

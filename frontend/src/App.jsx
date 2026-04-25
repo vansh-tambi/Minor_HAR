@@ -11,16 +11,16 @@ function App() {
   const [status, setStatus] = useState({ msg: 'System Ready', type: 'ok' });
 
   const onWindowReady = async (windowData) => {
-    setStatus({ msg: 'Inferencing Kinetics...', type: 'ok' });
+    setStatus({ msg: 'Processing data...', type: 'ok' });
     try {
       const response = await axios.post(`${backendUrl}/predict`, { data: windowData });
       const result = response.data;
       
       setPrediction(result);
-      setStatus({ msg: 'Connected. Broadcasting via TCP.', type: 'ok' });
+      setStatus({ msg: 'Connected to Prediction Service.', type: 'ok' });
     } catch (err) {
       console.error(err);
-      setStatus({ msg: 'Warning: Cannot reach Deep Learning Backend', type: 'err' });
+      setStatus({ msg: 'Error: Cannot reach backend service', type: 'err' });
     }
   };
 
@@ -44,20 +44,19 @@ function App() {
   };
 
   // derived values
-  const activity = prediction?.activity || 'AWAITING INPUT';
+  const activity = prediction?.activity || 'AWAITING DATA';
   const confidence = prediction?.confidence || 0;
   const pct = Math.round(confidence * 100) || 0;
   const raw_activity = prediction?.raw_activity;
   
-  let confBackground = 'linear-gradient(90deg, var(--accent-magenta), var(--accent-red))';
-  let confShadow = '0 0 16px var(--accent-red)';
+  let confBackground = 'var(--secondary-color)';
   
   if (confidence >= 0.8) {
-    confBackground = 'linear-gradient(90deg, var(--accent-green), #fff)';
-    confShadow = '0 0 16px var(--accent-green)';
+    confBackground = 'var(--success-color)';
   } else if (confidence >= 0.6) {
-    confBackground = 'linear-gradient(90deg, var(--accent-cyan), #fff)';
-    confShadow = '0 0 16px var(--accent-cyan)';
+    confBackground = 'var(--primary-color)';
+  } else {
+    confBackground = 'var(--warning-color)';
   }
   
   const isUncertain = raw_activity === 'Uncertain' || activity === 'Uncertain';
@@ -68,11 +67,11 @@ function App() {
 
   // Animation variants
   const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 10 },
     visible: (i) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.1, duration: 0.5, ease: 'easeOut' }
+      transition: { delay: i * 0.05, duration: 0.3, ease: 'easeOut' }
     })
   };
 
@@ -99,9 +98,9 @@ function App() {
         />
       </div>
 
-      <motion.div className="header" initial={{opacity: 0, scale: 0.95}} animate={{opacity: 1, scale: 1}} transition={{duration: 0.6}}>
-        <h1><Activity size={32} color="var(--accent-cyan)" /> HAR Engine</h1>
-        <div className="subtitle">Real-Time Kinetic Intelligence Terminal</div>
+      <motion.div className="header" initial={{opacity: 0, y: -10}} animate={{opacity: 1, y: 0}} transition={{duration: 0.4}}>
+        <h1><Activity size={28} color="var(--primary-color)" /> Activity Recognition</h1>
+        <div className="subtitle">Real-time human activity monitoring dashboard</div>
       </motion.div>
 
       <div className="grid">
@@ -113,16 +112,16 @@ function App() {
 
         {/* Activity Hero */}
         <motion.div className="card" id="activity-card" custom={0} initial="hidden" animate="visible" variants={cardVariants}>
-          <h2><Target size={18} /> Deep Learning Prediction</h2>
+          <h2><Target size={18} /> Prediction</h2>
           
           <AnimatePresence mode="wait">
             <motion.div 
               key={activity}
               className="activity-label"
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
             >
               {activity}
             </motion.div>
@@ -131,46 +130,46 @@ function App() {
           {prediction && (
             <motion.span className={`status-badge ${isUncertain ? 'uncertain' : 'normal'}`} initial={{opacity:0}} animate={{opacity:1}}>
               {isUncertain ? <AlertCircle size={14}/> : <CheckCircle2 size={14}/>}
-              {isUncertain ? 'Low Confidence Alert' : 'Target Locked'}
+              {isUncertain ? 'Low Confidence' : 'Confident Prediction'}
             </motion.span>
           )}
 
           <div className="confidence-bar-wrap">
             <div className="bar-bg">
-              <div className="bar-fill" style={{ width: `${pct}%`, background: confBackground, boxShadow: confShadow }}></div>
+              <div className="bar-fill" style={{ width: `${pct}%`, background: confBackground }}></div>
             </div>
-            <div className="confidence-text">Match Fidelity: {prediction ? pct : '0'}%</div>
+            <div className="confidence-text">Confidence Score: {prediction ? pct : '0'}%</div>
           </div>
         </motion.div>
 
         {/* Data Windowing / Progress */}
         <motion.div className="card" id="buffer-wrap" custom={1} initial="hidden" animate="visible" variants={cardVariants}>
-          <h2><Radar size={18}/> Streaming Window</h2>
-          <div className="confidence-text" style={{textAlign: 'left', marginBottom: '8px', color: 'var(--text-muted)'}}>{bufferSize} / {totalSize} Packets (<span style={{color: 'var(--accent-cyan)'}}>{isCapturing ? 'ONLINE' : 'OFFLINE'}</span>)</div>
+          <h2><Radar size={18}/> Buffer Status</h2>
+          <div className="confidence-text" style={{textAlign: 'left', marginBottom: '8px', color: 'var(--text-muted)'}}>{bufferSize} / {totalSize} Samples (<span style={{color: 'var(--primary-color)'}}>{isCapturing ? 'Online' : 'Offline'}</span>)</div>
           <div className="bar-bg slim">
-            <div className="bar-fill" style={{ width: `${(bufferSize/totalSize)*100}%`, background: 'var(--accent-cyan)', boxShadow: 'none' }}></div>
+            <div className="bar-fill" style={{ width: `${(bufferSize/totalSize)*100}%`, background: 'var(--primary-color)' }}></div>
           </div>
         </motion.div>
 
         {/* Live sensor values */}
         <motion.div className="card" id="sensors-card" custom={2} initial="hidden" animate="visible" variants={cardVariants}>
-          <h2><Activity size={18}/> Accelerometer Vectors</h2>
+          <h2><Activity size={18}/> Accelerometer</h2>
           <div className="sensor-vals">
-            <div className="axis x"><span>{currentData.ax.toFixed(2)}</span><label>X-Axis (ms²)</label></div>
-            <div className="axis y"><span>{currentData.ay.toFixed(2)}</span><label>Y-Axis (ms²)</label></div>
-            <div className="axis z"><span>{currentData.az.toFixed(2)}</span><label>Z-Axis (ms²)</label></div>
+            <div className="axis x"><span>{currentData.ax.toFixed(2)}</span><label>X-Axis (m/s²)</label></div>
+            <div className="axis y"><span>{currentData.ay.toFixed(2)}</span><label>Y-Axis (m/s²)</label></div>
+            <div className="axis z"><span>{currentData.az.toFixed(2)}</span><label>Z-Axis (m/s²)</label></div>
           </div>
-          <h2 style={{marginTop: '24px'}}><Activity size={18}/> Gyroscope Rotations</h2>
+          <h2 style={{marginTop: '24px'}}><Activity size={18}/> Gyroscope</h2>
           <div className="sensor-vals">
-            <div className="axis x"><span>{currentData.gx.toFixed(2)}</span><label>Alpha (°/s)</label></div>
-            <div className="axis y"><span>{currentData.gy.toFixed(2)}</span><label>Beta (°/s)</label></div>
-            <div className="axis z"><span>{currentData.gz.toFixed(2)}</span><label>Gamma (°/s)</label></div>
+            <div className="axis x"><span>{currentData.gx.toFixed(2)}</span><label>X-Axis (rad/s)</label></div>
+            <div className="axis y"><span>{currentData.gy.toFixed(2)}</span><label>Y-Axis (rad/s)</label></div>
+            <div className="axis z"><span>{currentData.gz.toFixed(2)}</span><label>Z-Axis (rad/s)</label></div>
           </div>
         </motion.div>
 
         {/* Top probabilities */}
         <motion.div className="card" id="prob-card" custom={3} initial="hidden" animate="visible" variants={cardVariants}>
-          <h2><Target size={18}/> Neural Output Distribution</h2>
+          <h2><Target size={18}/> Class Probabilities</h2>
           <div id="prob-list">
             {probEntries.map(([name, prob], i) => (
                 <div className="prob-row" key={name}>
@@ -180,8 +179,8 @@ function App() {
                     className="prob-bar" 
                     initial={{width: 0}}
                     animate={{width: `${prob*100}%`}}
-                    transition={{duration: 0.5}}
-                    style={{ background: i === 0 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}
+                    transition={{duration: 0.3}}
+                    style={{ background: i === 0 ? 'var(--primary-color)' : 'var(--secondary-color)' }}
                   />
                 </div>
                 <div className="prob-pct">{Math.round(prob*100)}%</div>
@@ -192,7 +191,7 @@ function App() {
 
         {/* Chart */}
         <motion.div className="card" id="chart-card" custom={4} initial="hidden" animate="visible" variants={cardVariants} style={{ paddingBottom: '0' }}>
-          <h2><Activity size={18}/> Raw Data Waveforms</h2>
+          <h2><Activity size={18}/> Live Sensor Data</h2>
           <div style={{ height: '160px', position: 'relative' }}>
             <SensorChart data={currentData} />
           </div>
@@ -201,10 +200,10 @@ function App() {
         {/* Controls */}
         <motion.div id="controls" custom={5} initial="hidden" animate="visible" variants={cardVariants}>
           <button className="btn-start" onClick={startBtnClick} disabled={isCapturing}>
-            <Play size={20} fill="currentColor" /> Initiate Stream
+            <Play size={20} fill="currentColor" /> Start Recording
           </button>
           <button className="btn-stop" onClick={stopBtnClick} disabled={!isCapturing}>
-            <Square size={20} fill="currentColor" /> Terminate Link
+            <Square size={20} fill="currentColor" /> Stop
           </button>
         </motion.div>
 
