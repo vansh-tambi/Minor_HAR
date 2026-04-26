@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { FileText, Share2, Loader2, Sparkles, UserPlus, BarChart3, Download } from 'lucide-react';
+import { FileText, Share2, Loader2, Sparkles, UserPlus, BarChart3, Download, Flame, Clock, TrendingUp } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -206,10 +206,41 @@ const Reports = ({ backendUrl, authToken }) => {
       <motion.div className="card" style={{ marginBottom: '20px', textAlign: 'left' }} initial={{opacity:0}} animate={{opacity:1}}>
         <h3 style={{ fontSize: '1.1rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <FileText size={18} color="var(--primary-color)" />
-          {isShared ? `Shared Report from ${report.sender_name || report.user_id}` : `Your Daily Summary - ${report.date}`}
+          {isShared ? `Shared Report from ${report.sender_name || report.user_id}` : `Daily Summary - ${report.date}`}
         </h3>
         
-        <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '8px', fontSize: '0.95rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'var(--text-main)' }}>
+        {report.stats && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ background: 'rgba(235, 94, 94, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(235, 94, 94, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
+                <Flame size={18} /> <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>Energy Burned</span>
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#ef4444' }}>
+                {report.stats.total_calories || 0} <span style={{ fontSize: '1rem', fontWeight: '400' }}>kcal</span>
+              </div>
+            </div>
+            
+            <div style={{ background: 'rgba(94, 129, 172, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(94, 129, 172, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#5e81ac' }}>
+                <Clock size={18} /> <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>Active Time</span>
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#5e81ac' }}>
+                {Math.round(Object.values(report.stats.totals || {}).reduce((a, b) => a + b, 0))} <span style={{ fontSize: '1rem', fontWeight: '400' }}>min</span>
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(163, 190, 140, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(163, 190, 140, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#a3be8c' }}>
+                <TrendingUp size={18} /> <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>Intensity</span>
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#a3be8c' }}>
+                {report.stats.totals?.Jogging > 0 || report.stats.totals?.Stairs > 0 ? 'High' : 'Moderate'}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ background: 'var(--input-bg)', padding: '16px', borderRadius: '8px', fontSize: '0.95rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', color: 'var(--text-main)', border: '1px solid var(--card-border)' }}>
           {report.report_text}
         </div>
 

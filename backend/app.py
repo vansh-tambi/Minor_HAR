@@ -419,6 +419,12 @@ def generate_pdf_report(current_user, report_id):
         pdf.set_font("helvetica", "", 12)
         date_str = report["date"].strftime("%B %d, %Y") if isinstance(report["date"], datetime) else str(report["date"])
         pdf.cell(0, 10, date_str, new_x="LMARGIN", new_y="NEXT")
+        
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(50, 10, "Total Calories:")
+        pdf.set_font("helvetica", "", 12)
+        calories = report.get("stats", {}).get("total_calories", 0)
+        pdf.cell(0, 10, f"{calories} kcal", new_x="LMARGIN", new_y="NEXT")
         pdf.ln(5)
         
         pdf.set_font("helvetica", "B", 14)
