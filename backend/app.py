@@ -305,7 +305,7 @@ def generate_report(current_user):
         f"3. A mention of their calorie burn ({stats['total_calories']} kcal) and how it relates to their activity levels.\n"
         f"4. Constructive, actionable suggestions for better health, posture, or maintaining an active lifestyle.\n"
         f"5. Any other relevant wellness advice based on the data provided.\n"
-        f"Keep the tone supportive and clinical. Format the output nicely using Markdown.\n"
+        f"Keep the tone supportive and clinical. DO NOT use any markdown characters (like **, ###, or *). Use plain text, uppercase words for headings, and standard dashes (-) for bullets to ensure the text is clean and professional.\n"
         f"Data: {summary_text}"
     )
     
@@ -415,17 +415,23 @@ def generate_pdf_report(current_user, report_id):
         pdf.cell(0, 10, owner_name, new_x="LMARGIN", new_y="NEXT")
         
         pdf.set_font("helvetica", "B", 12)
-        pdf.cell(50, 10, "Date of Report:")
+        pdf.cell(40, 10, "Date of Report:")
         pdf.set_font("helvetica", "", 12)
         date_str = report["date"].strftime("%B %d, %Y") if isinstance(report["date"], datetime) else str(report["date"])
         pdf.cell(0, 10, date_str, new_x="LMARGIN", new_y="NEXT")
-        
-        pdf.set_font("helvetica", "B", 12)
-        pdf.cell(50, 10, "Total Calories:")
-        pdf.set_font("helvetica", "", 12)
-        calories = report.get("stats", {}).get("total_calories", 0)
-        pdf.cell(0, 10, f"{calories} kcal", new_x="LMARGIN", new_y="NEXT")
         pdf.ln(5)
+        
+        # Summary Widgets
+        calories = report.get("stats", {}).get("total_calories", 0)
+        active_time = sum(report.get("stats", {}).get("totals", {}).values()) if report.get("stats") else 0
+        intensity = "High" if calories > 450 else ("Moderate" if calories >= 240 else "Low")
+        
+        pdf.set_font("helvetica", "B", 11)
+        pdf.set_fill_color(245, 247, 250)
+        pdf.cell(60, 12, f"Energy: {calories} kcal", border=1, align="C", fill=True)
+        pdf.cell(60, 12, f"Active Time: {int(active_time)} min", border=1, align="C", fill=True)
+        pdf.cell(60, 12, f"Intensity: {intensity}", border=1, align="C", fill=True, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(10)
         
         pdf.set_font("helvetica", "B", 14)
         pdf.set_text_color(44, 62, 80)

@@ -306,11 +306,11 @@ const ReportCard = ({ report, isShared, shareTarget, setShareTarget, shareEmail,
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        x: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'var(--text-muted)' } },
-        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'var(--text-muted)' }, title: { display: true, text: 'Minutes', color: 'var(--text-muted)' } }
+        x: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+        y: { stacked: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' }, title: { display: true, text: 'Minutes', color: '#94a3b8' } }
       },
       plugins: {
-        legend: { labels: { color: 'var(--text-main)' } }
+        legend: { labels: { color: '#f8fafc' } }
       }
     };
 
@@ -318,7 +318,7 @@ const ReportCard = ({ report, isShared, shareTarget, setShareTarget, shareEmail,
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'right', labels: { color: 'var(--text-main)' } }
+        legend: { position: 'right', labels: { color: '#f8fafc' } }
       }
     };
 
