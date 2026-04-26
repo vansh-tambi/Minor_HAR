@@ -245,11 +245,31 @@ def generate_report(current_user):
     if not logs:
         return jsonify({"error": "No activity logged today"}), 400
         
-    activity_counts = collections.Counter([log["activity"] for log in logs])
+    hourly_stats = {hour: collections.Counter() for hour in range(24)}
+    total_counts = collections.Counter()
+    
+    for log in logs:
+        act = log["activity"]
+        # Ensure timestamp is a datetime object
+        ts = log["timestamp"]
+        if isinstance(ts, datetime):
+            hour = ts.hour
+            hourly_stats[hour][act] += 1
+            total_counts[act] += 1
+            
+    # Convert window counts to minutes (3 seconds per window)
+    stats = {
+        "totals": {act: round((count * 3) / 60, 2) for act, count in total_counts.items()},
+        "hourly": {}
+    }
+    for hour in range(24):
+        # Only include activities with > 0 minutes for efficiency
+        hour_data = {act: round((count * 3) / 60, 2) for act, count in hourly_stats[hour].items() if count > 0}
+        stats["hourly"][str(hour)] = hour_data
+        
     summary_text = f"User {current_user['name']} had the following activities today: "
-    for act, count in activity_counts.items():
-        minutes = (count * 3) / 60 # 3 seconds per window
-        summary_text += f"{act}: {minutes:.1f} minutes, "
+    for act, mins in stats["totals"].items():
+        summary_text += f"{act}: {mins:.1f} minutes, "
         
     prompt = f"You are an AI health assistant. Based on this raw sensor data summary, write a highly professional, encouraging, 2-paragraph daily health report for the user. Do not include raw numbers if they are very small, just summarize the movement patterns. Data: {summary_text}"
     
@@ -261,12 +281,13 @@ def generate_report(current_user):
             "user_id": current_user["_id"],
             "date": today,
             "report_text": response.text,
+            "stats": stats,
             "shared_with": []
         }
         
         existing = db.reports.find_one({"user_id": current_user["_id"], "date": today})
         if existing:
-            db.reports.update_one({"_id": existing["_id"]}, {"$set": {"report_text": response.text}})
+            db.reports.update_one({"_id": existing["_id"]}, {"$set": {"report_text": response.text, "stats": stats}})
         else:
             db.reports.insert_one(report)
             
@@ -281,6 +302,15 @@ def get_reports(current_user):
     own_reports = list(db.reports.find({"user_id": current_user["_id"]}).sort("date", -1))
     shared_reports = list(db.reports.find({"shared_with": current_user["email"]}).sort("date", -1))
     
+    for r in shared_reports:
+        sender = db.users.find_one({"_id": r["user_id"]})
+        if sender:
+            r["sender_name"] = sender.get("name", "Unknown User")
+            r["sender_email"] = sender.get("email", "")
+        else:
+            r["sender_name"] = "Unknown User"
+            r["sender_email"] = ""
+            
     for r in own_reports + shared_reports:
         r["_id"] = str(r["_id"])
         r["user_id"] = str(r["user_id"])
