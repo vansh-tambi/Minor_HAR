@@ -40,6 +40,8 @@ const Reports = ({ backendUrl, authToken }) => {
   const [generating, setGenerating] = useState(false);
   const [shareEmail, setShareEmail] = useState('');
   const [shareTarget, setShareTarget] = useState(null);
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [sharing, setSharing] = useState(false);
   
   const [activeTab, setActiveTab] = useState('my_reports');
   const [viewedSharedIds, setViewedSharedIds] = useState(() => {
@@ -104,6 +106,7 @@ const Reports = ({ backendUrl, authToken }) => {
 
   const handleShare = async (reportId) => {
     if (!shareEmail) return;
+    setSharing(true);
     try {
       await axios.post(`${backendUrl}/api/reports/share`, {
         report_id: reportId,
@@ -118,10 +121,13 @@ const Reports = ({ backendUrl, authToken }) => {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.error || 'Failed to share report.');
+    } finally {
+      setSharing(false);
     }
   };
 
   const handleDownloadPdf = async (reportId) => {
+    setDownloadingId(reportId);
     try {
       const res = await axios.get(`${backendUrl}/api/reports/${reportId}/pdf`, {
         headers: { Authorization: `Bearer ${authToken}` },
@@ -137,7 +143,9 @@ const Reports = ({ backendUrl, authToken }) => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
-      alert('Failed to download PDF.');
+      alert('Failed to download PDF. There might be an issue with the report data or the server.');
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -234,8 +242,14 @@ const Reports = ({ backendUrl, authToken }) => {
         
         <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--card-border)', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
           
-          <button className="btn-stop" onClick={() => handleDownloadPdf(report._id)} style={{ width: 'auto', padding: '8px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <Download size={16} /> Download PDF
+          <button 
+            className="btn-stop" 
+            onClick={() => handleDownloadPdf(report._id)} 
+            disabled={downloadingId === report._id}
+            style={{ width: 'auto', padding: '8px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}
+          >
+            {downloadingId === report._id ? <Loader2 size={16} className="spin" /> : <Download size={16} />}
+            {downloadingId === report._id ? 'Downloading...' : 'Download PDF'}
           </button>
 
           {!isShared && (
@@ -249,8 +263,12 @@ const Reports = ({ backendUrl, authToken }) => {
                     onChange={(e) => setShareEmail(e.target.value)}
                     style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--card-border)', background: 'var(--bg-color)', color: 'var(--text-main)' }}
                   />
-                  <button onClick={() => handleShare(report._id)} style={{ padding: '8px 16px', flex: 'none', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '6px' }}>
-                    Share
+                  <button 
+                    onClick={() => handleShare(report._id)} 
+                    disabled={sharing}
+                    style={{ padding: '8px 16px', flex: 'none', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    {sharing ? <Loader2 size={16} className="spin" /> : 'Share'}
                   </button>
                   <button className="btn-stop" onClick={() => setShareTarget(null)} style={{ padding: '8px 16px', flex: 'none' }}>
                     Cancel

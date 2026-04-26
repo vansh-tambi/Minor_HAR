@@ -42,6 +42,18 @@ NUM_CHANNELS         = 8
 CONFIDENCE_THRESHOLD = 0.45
 SMOOTHING_WINDOW     = 3
 
+# MET Values for Calories (MET * weight_kg * hours)
+MET_VALUES = {
+    "Still": 1.3,
+    "Walking": 3.5,
+    "Jogging": 7.5,
+    "Stairs": 8.0,
+    "Eating": 1.5,
+    "Hand Activity": 2.0,
+    "Sports": 6.0,
+    "Uncertain": 1.0
+}
+
 # MongoDB
 MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
 mongo_client = MongoClient(MONGO_URI)
@@ -272,9 +284,17 @@ def generate_report(current_user):
         hour_data = {act: round((count * 3) / 60, 2) for act, count in hourly_stats[hour].items() if count > 0}
         stats["hourly"][str(hour)] = hour_data
         
+    total_calories = 0
+    for act, mins in stats["totals"].items():
+        met = MET_VALUES.get(act, 1.0)
+        total_calories += met * 70 * (mins / 60.0) # Assuming 70kg average
+    
+    stats["total_calories"] = round(total_calories, 1)
+
     summary_text = f"User {current_user['name']} had the following activities today: "
     for act, mins in stats["totals"].items():
         summary_text += f"{act}: {mins:.1f} minutes, "
+    summary_text += f"Total estimated calories burned: {stats['total_calories']} kcal."
         
     prompt = (
         f"You are an expert AI health and fitness assistant. Based on the following raw sensor data summary for today, "
@@ -282,8 +302,9 @@ def generate_report(current_user):
         f"Your report must include:\n"
         f"1. A clear summary of the physical activities the user has engaged in throughout the day.\n"
         f"2. Insights into their movement patterns, highlighting any positive trends or areas for improvement.\n"
-        f"3. Constructive, actionable suggestions for better health, posture, or maintaining an active lifestyle.\n"
-        f"4. Any other relevant wellness advice based on the data provided.\n"
+        f"3. A mention of their calorie burn ({stats['total_calories']} kcal) and how it relates to their activity levels.\n"
+        f"4. Constructive, actionable suggestions for better health, posture, or maintaining an active lifestyle.\n"
+        f"5. Any other relevant wellness advice based on the data provided.\n"
         f"Keep the tone supportive and clinical. Format the output nicely using Markdown.\n"
         f"Data: {summary_text}"
     )
@@ -405,7 +426,10 @@ def generate_pdf_report(current_user, report_id):
         pdf.cell(0, 10, "AI Clinical Summary", new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("helvetica", "", 11)
         pdf.set_text_color(0, 0, 0)
-        pdf.multi_cell(0, 7, report["report_text"])
+        # Clean text for PDF (fpdf2 core fonts only support latin-1)
+        report_text = report.get("report_text", "")
+        clean_text = report_text.encode('latin-1', 'replace').decode('latin-1')
+        pdf.multi_cell(0, 7, clean_text)
         pdf.ln(10)
         
         stats = report.get("stats", {})
