@@ -149,7 +149,127 @@ const Reports = ({ backendUrl, authToken }) => {
     }
   };
 
-  const ReportCard = ({ report, isShared }) => {
+  return (
+    <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '40px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', gap: '20px', flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+          <Sparkles size={24} color="var(--primary-color)"/> AI Health Reports
+        </h2>
+        <button className="btn-start" onClick={handleGenerate} disabled={generating} style={{ width: 'auto', padding: '10px 24px' }}>
+          {generating ? <Loader2 size={18} className="spin" /> : <Sparkles size={18} />}
+          {generating ? 'Generating...' : 'Generate Report'}
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '1px solid var(--card-border)' }}>
+        <button 
+          onClick={() => handleTabChange('my_reports')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: activeTab === 'my_reports' ? 'var(--text-main)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'my_reports' ? '600' : '400',
+            borderBottom: activeTab === 'my_reports' ? '2px solid var(--text-main)' : '2px solid transparent',
+            padding: '12px 4px',
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          My Reports
+        </button>
+        <button 
+          onClick={() => handleTabChange('shared_reports')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: activeTab === 'shared_reports' ? 'var(--text-main)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'shared_reports' ? '600' : '400',
+            borderBottom: activeTab === 'shared_reports' ? '2px solid var(--text-main)' : '2px solid transparent',
+            padding: '12px 4px',
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <UserPlus size={16} /> Shared With Me
+          {unreadCount > 0 && activeTab !== 'shared_reports' && (
+            <span style={{
+              background: 'rgba(239, 68, 68, 0.9)', // Muted red for professional look
+              color: '#fff',
+              borderRadius: '12px',
+              padding: '2px 8px',
+              fontSize: '0.7rem',
+              fontWeight: '600',
+              marginLeft: '4px'
+            }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 className="spin" size={32} /></div>
+      ) : (
+        <>
+          {activeTab === 'my_reports' && (
+            <>
+              {reports.own.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No reports generated yet.</div>
+              ) : (
+                reports.own.map(r => (
+                  <ReportCard 
+                    key={r._id} 
+                    report={r} 
+                    isShared={false} 
+                    shareTarget={shareTarget}
+                    setShareTarget={setShareTarget}
+                    shareEmail={shareEmail}
+                    setShareEmail={setShareEmail}
+                    handleShare={handleShare}
+                    handleDownloadPdf={handleDownloadPdf}
+                    sharing={sharing}
+                    downloadingId={downloadingId}
+                  />
+                ))
+              )}
+            </>
+          )}
+
+          {activeTab === 'shared_reports' && (
+            <>
+              {reports.shared.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No shared reports received yet.</div>
+              ) : (
+                reports.shared.map(r => (
+                  <ReportCard 
+                    key={r._id} 
+                    report={r} 
+                    isShared={true} 
+                    shareTarget={shareTarget}
+                    setShareTarget={setShareTarget}
+                    shareEmail={shareEmail}
+                    setShareEmail={setShareEmail}
+                    handleShare={handleShare}
+                    handleDownloadPdf={handleDownloadPdf}
+                    sharing={sharing}
+                    downloadingId={downloadingId}
+                  />
+                ))
+              )}
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+const ReportCard = ({ report, isShared, shareTarget, setShareTarget, shareEmail, setShareEmail, handleShare, handleDownloadPdf, sharing, downloadingId }) => {
     let barData = null;
     let doughnutData = null;
 
@@ -202,6 +322,17 @@ const Reports = ({ backendUrl, authToken }) => {
       }
     };
 
+    const cals = report.stats?.total_calories || 0;
+    let intensity = 'Low';
+    let intensityColor = '#a3be8c'; // Green
+    if (cals > 450) {
+      intensity = 'High';
+      intensityColor = '#bf616a'; // Red
+    } else if (cals >= 240) {
+      intensity = 'Moderate';
+      intensityColor = '#d08770'; // Orange
+    }
+
     return (
       <motion.div className="card" style={{ marginBottom: '20px', textAlign: 'left' }} initial={{opacity:0}} animate={{opacity:1}}>
         <h3 style={{ fontSize: '1.1rem', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -229,12 +360,12 @@ const Reports = ({ backendUrl, authToken }) => {
               </div>
             </div>
 
-            <div style={{ background: 'rgba(163, 190, 140, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(163, 190, 140, 0.2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#a3be8c' }}>
+            <div style={{ background: `${intensityColor}1a`, padding: '16px', borderRadius: '12px', border: `1px solid ${intensityColor}33`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: intensityColor }}>
                 <TrendingUp size={18} /> <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>Intensity</span>
               </div>
-              <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#a3be8c' }}>
-                {report.stats.totals?.Jogging > 0 || report.stats.totals?.Stairs > 0 ? 'High' : 'Moderate'}
+              <div style={{ fontSize: '1.8rem', fontWeight: '800', color: intensityColor }}>
+                {intensity}
               </div>
             </div>
           </div>
@@ -321,98 +452,8 @@ const Reports = ({ backendUrl, authToken }) => {
         )}
       </motion.div>
     );
-  };
-
-  return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '40px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', gap: '20px', flexWrap: 'wrap' }}>
-        <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-          <Sparkles size={24} color="var(--primary-color)"/> AI Health Reports
-        </h2>
-        <button className="btn-start" onClick={handleGenerate} disabled={generating} style={{ width: 'auto', padding: '10px 24px' }}>
-          {generating ? <Loader2 size={18} className="spin" /> : <Sparkles size={18} />}
-          {generating ? 'Generating...' : 'Generate Report'}
-        </button>
-      </div>
-
-      <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '1px solid var(--card-border)' }}>
-        <button 
-          onClick={() => handleTabChange('my_reports')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: activeTab === 'my_reports' ? 'var(--text-main)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'my_reports' ? '600' : '400',
-            borderBottom: activeTab === 'my_reports' ? '2px solid var(--text-main)' : '2px solid transparent',
-            padding: '12px 4px',
-            cursor: 'pointer',
-            fontSize: '0.95rem',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          My Reports
-        </button>
-        <button 
-          onClick={() => handleTabChange('shared_reports')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: activeTab === 'shared_reports' ? 'var(--text-main)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'shared_reports' ? '600' : '400',
-            borderBottom: activeTab === 'shared_reports' ? '2px solid var(--text-main)' : '2px solid transparent',
-            padding: '12px 4px',
-            cursor: 'pointer',
-            fontSize: '0.95rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <UserPlus size={16} /> Shared With Me
-          {unreadCount > 0 && activeTab !== 'shared_reports' && (
-            <span style={{
-              background: 'rgba(239, 68, 68, 0.9)', // Muted red for professional look
-              color: '#fff',
-              borderRadius: '12px',
-              padding: '2px 8px',
-              fontSize: '0.7rem',
-              fontWeight: '600',
-              marginLeft: '4px'
-            }}>
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '40px' }}><Loader2 className="spin" size={32} /></div>
-      ) : (
-        <>
-          {activeTab === 'my_reports' && (
-            <>
-              {reports.own.length === 0 ? (
-                <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No reports generated yet.</div>
-              ) : (
-                reports.own.map(r => <ReportCard key={r._id} report={r} isShared={false} />)
-              )}
-            </>
-          )}
-
-          {activeTab === 'shared_reports' && (
-            <>
-              {reports.shared.length === 0 ? (
-                <div className="card" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No shared reports received yet.</div>
-              ) : (
-                reports.shared.map(r => <ReportCard key={r._id} report={r} isShared={true} />)
-              )}
-            </>
-          )}
-        </>
-      )}
-    </div>
-  );
 };
+
+// (ReportCard logic already ends above)
 
 export default Reports;
