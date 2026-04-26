@@ -1,5 +1,6 @@
 """
 Flask backend for HAR prediction, Auth, MongoDB, and AI Reporting.
+(Trigger reload for activity_names.pkl)
 Run from Minor_HAR folder: python backend/app.py
 """
 
