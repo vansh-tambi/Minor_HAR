@@ -252,23 +252,26 @@ def generate_report(current_user):
         
     prompt = f"You are an AI health assistant. Based on this raw sensor data summary, write a highly professional, encouraging, 2-paragraph daily health report for the user. Do not include raw numbers if they are very small, just summarize the movement patterns. Data: {summary_text}"
     
-    gen_model = genai.GenerativeModel("gemini-1.5-flash")
-    response = gen_model.generate_content(prompt)
-    
-    report = {
-        "user_id": current_user["_id"],
-        "date": today,
-        "report_text": response.text,
-        "shared_with": []
-    }
-    
-    existing = db.reports.find_one({"user_id": current_user["_id"], "date": today})
-    if existing:
-        db.reports.update_one({"_id": existing["_id"]}, {"$set": {"report_text": response.text}})
-    else:
-        db.reports.insert_one(report)
+    try:
+        gen_model = genai.GenerativeModel("gemini-flash-latest")
+        response = gen_model.generate_content(prompt)
         
-    return jsonify({"message": "Report generated", "report": response.text})
+        report = {
+            "user_id": current_user["_id"],
+            "date": today,
+            "report_text": response.text,
+            "shared_with": []
+        }
+        
+        existing = db.reports.find_one({"user_id": current_user["_id"], "date": today})
+        if existing:
+            db.reports.update_one({"_id": existing["_id"]}, {"$set": {"report_text": response.text}})
+        else:
+            db.reports.insert_one(report)
+            
+        return jsonify({"message": "Report generated", "report": response.text})
+    except Exception as e:
+        return jsonify({"error": f"Failed to generate report: {str(e)}"}), 500
 
 
 @app.route("/api/reports", methods=["GET"])
