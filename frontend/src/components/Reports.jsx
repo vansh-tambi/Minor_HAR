@@ -25,13 +25,13 @@ ChartJS.register(
 );
 
 const ACTIVITY_COLORS = {
-  "Walking": "rgba(54, 162, 235, 0.8)",
-  "Jogging": "rgba(255, 99, 132, 0.8)",
-  "Stairs": "rgba(255, 206, 86, 0.8)",
-  "Still": "rgba(75, 192, 192, 0.8)",
-  "Eating": "rgba(153, 102, 255, 0.8)",
-  "Hand Activity": "rgba(255, 159, 64, 0.8)",
-  "Sports": "rgba(201, 203, 207, 0.8)",
+  "Walking": "rgba(94, 129, 172, 0.85)",     // Muted Blue
+  "Jogging": "rgba(191, 97, 106, 0.85)",     // Muted Red
+  "Stairs": "rgba(208, 135, 112, 0.85)",     // Muted Orange
+  "Still": "rgba(163, 190, 140, 0.85)",      // Muted Green
+  "Eating": "rgba(180, 142, 173, 0.85)",     // Muted Purple
+  "Hand Activity": "rgba(235, 203, 139, 0.85)", // Muted Yellow
+  "Sports": "rgba(136, 192, 208, 0.85)",     // Muted Cyan
 };
 
 const Reports = ({ backendUrl, authToken }) => {
@@ -247,29 +247,30 @@ const Reports = ({ backendUrl, authToken }) => {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', paddingTop: '40px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', gap: '20px', flexWrap: 'wrap' }}>
+        <h2 style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
           <Sparkles size={24} color="var(--primary-color)"/> AI Health Reports
         </h2>
-        <button className="btn-start" onClick={handleGenerate} disabled={generating} style={{ width: 'auto' }}>
-          {generating ? <Loader2 size={18} className="spin" /> : <FileText size={18} />}
-          {generating ? 'Generating via Gemini...' : 'Generate Today\'s Report'}
+        <button className="btn-start" onClick={handleGenerate} disabled={generating} style={{ width: 'auto', padding: '10px 24px' }}>
+          {generating ? <Loader2 size={18} className="spin" /> : <Sparkles size={18} />}
+          {generating ? 'Generating...' : 'Generate Report'}
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', borderBottom: '1px solid var(--card-border)', paddingBottom: '8px' }}>
+      <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '1px solid var(--card-border)' }}>
         <button 
           onClick={() => handleTabChange('my_reports')}
           style={{
             background: 'transparent',
             border: 'none',
-            color: activeTab === 'my_reports' ? 'var(--primary-color)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'my_reports' ? 'bold' : 'normal',
-            borderBottom: activeTab === 'my_reports' ? '2px solid var(--primary-color)' : 'none',
-            padding: '8px 16px',
+            color: activeTab === 'my_reports' ? 'var(--text-main)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'my_reports' ? '600' : '400',
+            borderBottom: activeTab === 'my_reports' ? '2px solid var(--text-main)' : '2px solid transparent',
+            padding: '12px 4px',
             cursor: 'pointer',
-            fontSize: '1rem'
+            fontSize: '0.95rem',
+            transition: 'all 0.2s ease'
           }}
         >
           My Reports
@@ -279,27 +280,27 @@ const Reports = ({ backendUrl, authToken }) => {
           style={{
             background: 'transparent',
             border: 'none',
-            color: activeTab === 'shared_reports' ? 'var(--primary-color)' : 'var(--text-muted)',
-            fontWeight: activeTab === 'shared_reports' ? 'bold' : 'normal',
-            borderBottom: activeTab === 'shared_reports' ? '2px solid var(--primary-color)' : 'none',
-            padding: '8px 16px',
+            color: activeTab === 'shared_reports' ? 'var(--text-main)' : 'var(--text-muted)',
+            fontWeight: activeTab === 'shared_reports' ? '600' : '400',
+            borderBottom: activeTab === 'shared_reports' ? '2px solid var(--text-main)' : '2px solid transparent',
+            padding: '12px 4px',
             cursor: 'pointer',
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            position: 'relative'
+            transition: 'all 0.2s ease'
           }}
         >
           <UserPlus size={16} /> Shared With Me
           {unreadCount > 0 && activeTab !== 'shared_reports' && (
             <span style={{
-              background: 'var(--primary-color)',
-              color: 'var(--bg-color)',
+              background: 'rgba(239, 68, 68, 0.9)', // Muted red for professional look
+              color: '#fff',
               borderRadius: '12px',
               padding: '2px 8px',
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
+              fontSize: '0.7rem',
+              fontWeight: '600',
               marginLeft: '4px'
             }}>
               {unreadCount}

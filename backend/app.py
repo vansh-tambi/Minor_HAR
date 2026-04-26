@@ -271,7 +271,7 @@ def generate_report(current_user):
     for act, mins in stats["totals"].items():
         summary_text += f"{act}: {mins:.1f} minutes, "
         
-    prompt = f"You are an AI health assistant. Based on this raw sensor data summary, write a highly professional, encouraging, 2-paragraph daily health report for the user. Do not include raw numbers if they are very small, just summarize the movement patterns. Data: {summary_text}"
+    prompt = f"You are an AI health assistant. Based on this raw sensor data summary, write a highly professional, encouraging, one concise paragraph daily health report for the user. Do not include raw numbers if they are very small, just summarize the movement patterns. Data: {summary_text}"
     
     try:
         gen_model = genai.GenerativeModel("gemini-flash-latest")

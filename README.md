@@ -19,9 +19,10 @@ This system is designed for real-world usability rather than basic motion classi
 - Hybrid deep learning model (Conv1D + LSTM)  
 - Live visualization dashboard using React (Professional Dark Mode UI)
 - User Authentication (Google Auth) & Data Logging (MongoDB)
-- Daily Activity Summaries powered by Gemini AI
+- Daily Activity Summaries with Visual Timelines (Chart.js) and Gemini AI insights
+- Collaborative Tabbed UI for securely sharing health reports with notifications
 - Low-latency predictions via Flask API  
-- Optimized 8-class activity classification  
+- Optimized activity classification with robust label consolidation
 
 ---
 
@@ -43,17 +44,16 @@ This system improves performance by:
 
 The model was trained using a custom-prioritized aggregation of datasets. Real-world mobile data recorded by the users was heavily augmented (30x) and set as the absolute priority. This was supplemented by capping classes from three major open-source datasets: **WISDM (Wireless Sensor Data Mining)**, **Heterogeneity Activity Recognition**, and **UCI HAR**. By unifying these datasets while ensuring the custom data dominates, we created a robust, highly accurate model for real-world scenarios.
 
-### Final Classes:
+### Final Classes (Consolidated):
 - Walking  
 - Jogging  
 - Stairs  
 - Still  
 - Eating  
-- Hand Activity  
-- Active Hands  
+- Hand Activity (Merged with Active Hands for higher stability)
 - Sports  
 
-This restructuring improves both model stability and prediction reliability.
+This restructuring improves both model stability and user-facing prediction reliability.
 
 ---
 
@@ -82,9 +82,10 @@ This restructuring improves both model stability and prediction reliability.
 ## System Design  
 
 ### Frontend:
-- React (Vite)  
-- Chart.js for real-time visualization  
-- Mobile browser sensor integration  
+- React (Vite) with Cross-Origin Isolation for secure OAuth
+- Chart.js for real-time sensor visualization & daily activity timelines
+- Contextual Tabbed UI for managing Personal vs. Shared Health Reports
+- Mobile browser sensor integration
 
 ### Backend:
 - Flask API  
