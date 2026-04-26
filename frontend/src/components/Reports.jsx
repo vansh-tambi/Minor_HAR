@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { FileText, Share2, Loader2, Sparkles, UserPlus, BarChart3 } from 'lucide-react';
+import { FileText, Share2, Loader2, Sparkles, UserPlus, BarChart3, Download } from 'lucide-react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -121,6 +121,26 @@ const Reports = ({ backendUrl, authToken }) => {
     }
   };
 
+  const handleDownloadPdf = async (reportId) => {
+    try {
+      const res = await axios.get(`${backendUrl}/api/reports/${reportId}/pdf`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Health_Report_${reportId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to download PDF.');
+    }
+  };
+
   const ReportCard = ({ report, isShared }) => {
     let barData = null;
     let doughnutData = null;
@@ -212,34 +232,42 @@ const Reports = ({ backendUrl, authToken }) => {
           </div>
         )}
         
-        {!isShared && (
-          <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--card-border)' }}>
-            {shareTarget === report._id ? (
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input 
-                  type="email" 
-                  placeholder="Enter user email..." 
-                  value={shareEmail}
-                  onChange={(e) => setShareEmail(e.target.value)}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--card-border)', background: 'var(--bg-color)', color: 'var(--text-main)' }}
-                />
-                <button onClick={() => handleShare(report._id)} style={{ padding: '8px 16px', flex: 'none' }}>
-                  Share
+        <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--card-border)', display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', justifyContent: 'space-between' }}>
+          
+          <button className="btn-stop" onClick={() => handleDownloadPdf(report._id)} style={{ width: 'auto', padding: '8px 16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Download size={16} /> Download PDF
+          </button>
+
+          {!isShared && (
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+              {shareTarget === report._id ? (
+                <div style={{ display: 'flex', gap: '8px', width: '100%', maxWidth: '400px' }}>
+                  <input 
+                    type="email" 
+                    placeholder="Enter user email..." 
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--card-border)', background: 'var(--bg-color)', color: 'var(--text-main)' }}
+                  />
+                  <button onClick={() => handleShare(report._id)} style={{ padding: '8px 16px', flex: 'none', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '6px' }}>
+                    Share
+                  </button>
+                  <button className="btn-stop" onClick={() => setShareTarget(null)} style={{ padding: '8px 16px', flex: 'none' }}>
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button className="btn-stop" onClick={() => setShareTarget(report._id)} style={{ width: 'auto', padding: '8px 16px' }}>
+                  <Share2 size={16} /> Share Report
                 </button>
-                <button className="btn-stop" onClick={() => setShareTarget(null)} style={{ padding: '8px 16px', flex: 'none' }}>
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button className="btn-stop" onClick={() => setShareTarget(report._id)} style={{ width: 'auto', padding: '8px 16px' }}>
-                <Share2 size={16} /> Share Report
-              </button>
-            )}
-            {report.shared_with && report.shared_with.length > 0 && (
-              <div style={{ marginTop: '8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Shared with: {report.shared_with.join(', ')}
-              </div>
-            )}
+              )}
+            </div>
+          )}
+        </div>
+
+        {!isShared && report.shared_with && report.shared_with.length > 0 && (
+          <div style={{ marginTop: '12px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+            Shared with: {report.shared_with.join(', ')}
           </div>
         )}
       </motion.div>

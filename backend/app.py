@@ -13,11 +13,16 @@ from functools import wraps
 from dotenv import load_dotenv
 import numpy as np
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from keras.models import load_model
 from scipy.signal import butter, sosfilt
 from bson.objectid import ObjectId
+import io
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from fpdf import FPDF
 
 # Integrations
 import jwt
@@ -339,6 +344,102 @@ def share_report(current_user):
         
     return jsonify({"message": f"Report shared with {target_email}"})
 
+@app.route("/api/reports/<report_id>/pdf", methods=["GET"])
+@token_required
+def generate_pdf_report(current_user, report_id):
+    try:
+        report = db.reports.find_one({"_id": ObjectId(report_id)})
+        if not report:
+            return jsonify({"error": "Report not found"}), 404
+            
+        if str(report["user_id"]) != str(current_user["_id"]) and current_user["email"] not in report.get("shared_with", []):
+            return jsonify({"error": "Unauthorized"}), 403
+            
+        owner = db.users.find_one({"_id": report["user_id"]})
+        owner_name = owner["name"] if owner else "Unknown User"
+        
+        class PDF(FPDF):
+            def header(self):
+                self.set_font("helvetica", "B", 20)
+                self.set_text_color(41, 128, 185)
+                self.cell(0, 15, "Official Health & Activity Report", align="C", new_x="LMARGIN", new_y="NEXT")
+                self.set_line_width(0.5)
+                self.set_draw_color(41, 128, 185)
+                self.line(10, 25, 200, 25)
+                self.ln(10)
+                
+            def footer(self):
+                self.set_y(-15)
+                self.set_font("helvetica", "I", 8)
+                self.set_text_color(128, 128, 128)
+                self.cell(0, 10, f"Page {self.page_no()}", align="C")
+
+        pdf = PDF()
+        pdf.add_page()
+        
+        pdf.set_font("helvetica", "B", 12)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(50, 10, "Patient Name:")
+        pdf.set_font("helvetica", "", 12)
+        pdf.cell(0, 10, owner_name, new_x="LMARGIN", new_y="NEXT")
+        
+        pdf.set_font("helvetica", "B", 12)
+        pdf.cell(50, 10, "Date of Report:")
+        pdf.set_font("helvetica", "", 12)
+        date_str = report["date"].strftime("%B %d, %Y") if isinstance(report["date"], datetime) else str(report["date"])
+        pdf.cell(0, 10, date_str, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(5)
+        
+        pdf.set_font("helvetica", "B", 14)
+        pdf.set_text_color(44, 62, 80)
+        pdf.cell(0, 10, "AI Clinical Summary", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("helvetica", "", 11)
+        pdf.set_text_color(0, 0, 0)
+        pdf.multi_cell(0, 7, report["report_text"])
+        pdf.ln(10)
+        
+        stats = report.get("stats", {})
+        if stats and "totals" in stats:
+            pdf.set_font("helvetica", "B", 14)
+            pdf.set_text_color(44, 62, 80)
+            pdf.cell(0, 10, "Activity Breakdown", new_x="LMARGIN", new_y="NEXT")
+            
+            totals = stats["totals"]
+            labels = list(totals.keys())
+            values = list(totals.values())
+            
+            if sum(values) > 0:
+                plt.figure(figsize=(6, 6))
+                plt.pie(values, labels=labels, autopct='%1.1f%%', startangle=140)
+                plt.title("Daily Activity Distribution")
+                
+                img_buf = io.BytesIO()
+                plt.savefig(img_buf, format='png', bbox_inches='tight')
+                img_buf.seek(0)
+                plt.close()
+                
+                pdf.image(img_buf, x=55, w=100)
+                pdf.ln(5)
+                
+            pdf.set_font("helvetica", "B", 12)
+            pdf.set_text_color(44, 62, 80)
+            pdf.cell(0, 10, "Detailed Minutes:", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("helvetica", "", 11)
+            pdf.set_text_color(0, 0, 0)
+            for act, mins in totals.items():
+                pdf.cell(0, 7, f"- {act}: {mins} mins", new_x="LMARGIN", new_y="NEXT")
+                
+        pdf_bytes = pdf.output()
+        
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f"Health_Report_{owner_name.replace(' ', '_')}.pdf"
+        )
+    except Exception as e:
+        print(f"PDF Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     print("\n" + "=" * 50)
