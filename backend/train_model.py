@@ -135,6 +135,7 @@ def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
 
     report = classification_report(
         y_test, y_pred,
+        labels=range(len(target_names)),
         target_names=target_names,
         zero_division=0,
     )
@@ -151,7 +152,7 @@ def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
         f.write(report)
     print(f"\n  Report saved -> {report_path}")
 
-    cm = confusion_matrix(y_test, y_pred)
+    cm = confusion_matrix(y_test, y_pred, labels=range(len(target_names)))
     plt.figure(figsize=(10, 8))
     sns.heatmap(
         cm, annot=True, fmt="d", cmap="Blues",
@@ -229,7 +230,7 @@ if __name__ == "__main__":
         classes=np.unique(y_train),
         y=y_train
     )
-    class_weights = dict(enumerate(class_weights_arr))
+    class_weights = dict(zip(np.unique(y_train), class_weights_arr))
     print("\n  Class weights:")
     for idx, w in class_weights.items():
         name = label_encoder.inverse_transform([idx])[0]
