@@ -1,131 +1,134 @@
-# Human Activity Recognition (HAR) Engine  
-### Real-Time Activity Classification using Conv1D + LSTM
+# 🦾 Human Activity Recognition (HAR) Engine
+### **Real-Time Motion Intelligence with Hybrid Deep Learning & AI Health Reporting**
+
+![Dashboard Preview](docs/images/dashboard_preview.png)
 
 ---
 
-## Overview  
+## 🌟 Overview
 
-A real-time Human Activity Recognition system that classifies user movements using 6-axis sensor data (Accelerometer + Gyroscope) streamed directly from a mobile device.
+The **HAR Engine** is a production-grade Human Activity Recognition system that transforms raw smartphone sensor data into actionable health insights. By leveraging a custom-trained **Conv1D + LSTM** hybrid model, the system classifies 8 distinct physical activities in real-time with **83% accuracy**.
 
-The system processes live data through a Flask-based ML API and predicts activities using a hybrid deep learning model (1D CNN + LSTM).
-
-This system is designed for real-world usability rather than basic motion classification demos.
+Unlike traditional HAR systems, this project provides a complete end-to-end ecosystem: from live mobile sensor streaming to **AI-generated clinical health reports** powered by Google Gemini, securely stored in MongoDB, and shareable with healthcare providers.
 
 ---
 
-## Key Highlights  
+## 🚀 The Full Walkthrough
 
-- Real-time sensor data streaming from mobile browser  
-- Hybrid deep learning model (Conv1D + LSTM)  
-- Live visualization dashboard using React (Professional Dark Mode UI)
-- User Authentication (Google Auth) & Data Logging (MongoDB)
-- Daily Activity Summaries with Visual Timelines (Chart.js) and Gemini AI insights
-- Collaborative Tabbed UI for securely sharing health reports with notifications
-- Low-latency predictions via Flask API  
-- Optimized activity classification with robust label consolidation
+### **Phase 1: Real-Time Data Acquisition**
+The journey begins on the **React-based Mobile Dashboard**. 
+1. **Sensor Streaming**: Using the W3C DeviceMotion API, the mobile browser captures 6-axis data (Accelerometer + Gyroscope) at **20Hz**.
+2. **Dynamic Windowing**: Samples are buffered into **3-second sliding windows** (60 samples each).
+3. **Cross-Origin Security**: The frontend is isolated using COOP/COEP headers to allow secure **Google OAuth 2.0** authentication even on mobile browsers.
 
----
+### **Phase 2: The ML "Brain" (Conv1D + LSTM)**
+When a data window reaches the **Flask Backend**, it undergoes a rigorous processing pipeline:
+1. **Signal Preprocessing**: 
+   - **Butterworth Filtering**: Removes high-frequency noise and separates gravity from body acceleration.
+   - **Feature Engineering**: Calculates Euclidean magnitudes for rotation-invariant motion intensity.
+2. **Hybrid Inference**: 
+   - **Conv1D Layers**: Extract spatial features across the 6 sensor channels.
+   - **LSTM Layers**: Model temporal dependencies, learning the "rhythm" of activities like walking vs. jogging.
+3. **Smoothing & Confidence**: A **Majority Voting** algorithm and **Confidence Thresholding** ensure the UI remains stable and doesn't flicker between classes.
 
-## Problem Statement  
-
-Traditional HAR systems:
-- Rely only on accelerometer data  
-- Struggle with overlapping activities  
-- Perform poorly in noisy real-world environments  
-
-This system improves performance by:
-- Using combined accelerometer and gyroscope data (6 channels)  
-- Applying temporal modeling using LSTM  
-- Consolidating noisy labels into meaningful activity groups  
-
----
-
-## Dataset & Classes  
-
-The model was trained using a custom-prioritized aggregation of datasets. Real-world mobile data recorded by the users was heavily augmented (30x) and set as the absolute priority. This was supplemented by capping classes from three major open-source datasets: **WISDM (Wireless Sensor Data Mining)**, **Heterogeneity Activity Recognition**, and **UCI HAR**. By unifying these datasets while ensuring the custom data dominates, we created a robust, highly accurate model for real-world scenarios.
-
-### Final Classes (Consolidated):
-- Walking  
-- Jogging  
-- Stairs  
-- Still  
-- Eating  
-- Hand Activity (Merged with Active Hands for higher stability)
-- Sports  
-
-This restructuring improves both model stability and user-facing prediction reliability.
+### **Phase 3: AI Insights & Clinical Reporting**
+The system doesn't just label activities—it understands your day.
+1. **Activity Logging**: Every verified movement is logged to **MongoDB Atlas**.
+2. **Gemini AI Analysis**: At the end of the day, the system aggregates your logs (total calories, active minutes, intensity) and feeds them to **Google Gemini 1.5 Flash**.
+3. **Professional Reports**: The AI generates a supportive, clinical summary of your health trends, which can be:
+   - Viewed on the web dashboard.
+   - **Shared** with a doctor or trainer via email.
+   - Exported as a **Professional PDF** with Matplotlib-generated activity distribution charts.
 
 ---
 
-## Model Architecture  
+## 🛠️ Technical Stack
 
-**Input Configuration:**
-- 10-second sliding window  
-- 50% overlap  
-- Shape: `200 × 6` (time steps × sensor channels)
-
-### Pipeline:
-
-1. **Conv1D Layers**
-   - Extract spatial features across sensor channels  
-   - Includes Batch Normalization and MaxPooling  
-
-2. **LSTM Layer**
-   - Captures temporal dependencies  
-   - Learns motion patterns over time  
-
-3. **Dense Layer (Softmax)**
-   - Outputs probabilities across 8 activity classes  
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 19, Vite, Chart.js, Framer Motion, Lucide, Google OAuth |
+| **Backend** | Flask (Python), Keras (TensorFlow), SciPy, JWT, PyMongo |
+| **Database** | MongoDB Atlas (Cloud NoSQL) |
+| **AI/ML** | Google Gemini 1.5 Flash, 1D-CNN + LSTM Hybrid Model |
+| **DevOps** | Vercel (Frontend), Local/LAN Hosting (Mobile testing) |
 
 ---
 
-## System Design  
+## 🏗️ Project Architecture
 
-### Frontend:
-- React (Vite) with Cross-Origin Isolation for secure OAuth
-- Chart.js for real-time sensor visualization & daily activity timelines
-- Contextual Tabbed UI for managing Personal vs. Shared Health Reports
-- Mobile browser sensor integration
+```mermaid
+graph TD
+    subgraph "Mobile Device"
+        A["Mobile Browser (React)"] --> B["DeviceMotion API (20Hz)"]
+        B --> C["Sliding Window Buffer (60 samples)"]
+    end
 
-### Backend:
-- Flask API  
-- TensorFlow/Keras model inference  
+    subgraph "Cloud Backend (Flask)"
+        C -->|"60x6 JSON Window"| D["Signal Filter (Butterworth)"]
+        D --> E["Feature Scaler"]
+        E --> F["Conv1D + LSTM Model"]
+        F --> G["Post-Processing (Majority Vote)"]
+    end
 
-### Data Flow:
-Mobile Sensors → React → Flask API → Model → Prediction → UI  
+    subgraph "Intelligence Layer"
+        G --> H["MongoDB Logs"]
+        H --> I["Google Gemini AI"]
+        I --> J["Health Summary Report"]
+        J --> K["PDF Generation (Matplotlib/FPDF)"]
+    end
 
----
-
-## Results  
-
-- **Accuracy: ~83%** (Specifically 82.99%)
-- By migrating from a standard 2D CNN to a deeper **1D-CNN + LSTM architectural hybrid** and implementing aggressive data augmentation (30x) on real user data, the model achieved extremely high precision for complex tasks like "Eating" (96% precision) and "Stationary Still" (94% precision).
-
----
-
-## Setup Instructions  
-
-```bash
-# 1. Backend
-cd backend
-pip install -r requirements.txt
-python app.py
-
-# 2. Frontend
-cd frontend
-npm install
-npm run dev
-
-# 3. Connect via mobile device
-# Navigate to the Network IP generated by Vite using your mobile browser.
+    K --> L["Final User Dashboard"]
 ```
 
 ---
 
-## Contributors
+## 📊 Model Performance
 
-:boy: **Vansh Tambi**  
-Email: [vanshtambi@gmail.com](mailto:vanshtambi@gmail.com)
+The model was trained on a **massively augmented (30x)** dataset combining WISDM, Heterogeneity Activity Recognition, UCI HAR, and custom-recorded user data.
 
-:boy: **Vivek Pasi**  
-Email: [vivekpasi43@gmail.com](mailto:vivekpasi43@gmail.com)
+- **Global Accuracy**: 82.99%
+- **Jogging Precision**: 99%
+- **Eating Precision**: 96%
+- **Still Precision**: 94%
+
+By prioritizing custom real-world data over laboratory datasets, the model handles the noise and variability of daily life far better than standard benchmark models.
+
+---
+
+## 🚀 Getting Started
+
+### **1. Clone & Install**
+```bash
+git clone https://github.com/your-username/Minor_HAR.git
+cd Minor_HAR
+```
+
+### **2. Backend Setup**
+```bash
+cd backend
+pip install -r requirements.txt
+# Add MONGODB_URI, GEMINI_API_KEY, and VITE_GOOGLE_CLIENT_ID to .env
+python app.py
+```
+
+### **3. Frontend Setup**
+```bash
+cd frontend
+npm install
+npm run dev -- --host
+```
+
+### **4. Mobile Connection**
+1. Ensure your phone and PC are on the same WiFi.
+2. Open the **Network URL** shown in the Vite terminal on your phone.
+3. Sign in, grant sensor permissions, and start moving!
+
+---
+
+## 👨‍💻 Contributors
+
+- **Vansh Tambi** ([vanshtambi@gmail.com](mailto:vanshtambi@gmail.com))
+- **Vivek Pasi** ([vivekpasi43@gmail.com](mailto:vivekpasi43@gmail.com))
+
+---
+*Developed as part of the Minor Project at IIIT Bhopal, 2026.*
