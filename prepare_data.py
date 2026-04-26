@@ -341,6 +341,9 @@ def extract_all_custom():
         "still data.csv": "Still",
         "jogging.csv": "Jogging",
         "eating.csv": "Eating",
+        "sensor_recording_20260424_131838.csv": "Stairs",
+        "sensor_recording_20260424_184254.csv": "Stairs",
+        "sensor_recording_20260424_184845.csv": "Stairs",
     }
     
     all_frames, all_labels = [], []
