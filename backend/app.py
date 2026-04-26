@@ -467,6 +467,40 @@ def generate_pdf_report(current_user, report_id):
                 pdf.image(img_buf, x=55, w=100)
                 pdf.ln(5)
                 
+                hourly = stats.get("hourly", {})
+                if hourly:
+                    hours = [str(i) for i in range(24)]
+                    plt.figure(figsize=(8, 4))
+                    bottoms = [0] * 24
+                    
+                    colors = ['#5e81ac', '#bf616a', '#d08770', '#a3be8c', '#b48ead', '#ebcb8b', '#88c0d0']
+                    color_idx = 0
+                    
+                    for act in labels:
+                        act_mins = [hourly.get(h, {}).get(act, 0) for h in hours]
+                        if sum(act_mins) > 0:
+                            plt.bar(hours, act_mins, bottom=bottoms, label=act, color=colors[color_idx % len(colors)])
+                            bottoms = [bottoms[i] + act_mins[i] for i in range(24)]
+                            color_idx += 1
+                            
+                    plt.title("Hourly Activity Timeline")
+                    plt.xlabel("Hour of Day")
+                    plt.ylabel("Minutes")
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+                    plt.tight_layout()
+                    
+                    img_buf_bar = io.BytesIO()
+                    plt.savefig(img_buf_bar, format='png', bbox_inches='tight')
+                    img_buf_bar.seek(0)
+                    plt.close()
+                    
+                    pdf.add_page()
+                    pdf.set_font("helvetica", "B", 14)
+                    pdf.set_text_color(44, 62, 80)
+                    pdf.cell(0, 10, "Activity Timeline", new_x="LMARGIN", new_y="NEXT")
+                    pdf.image(img_buf_bar, x=10, w=180)
+                    pdf.ln(10)
+                
             pdf.set_font("helvetica", "B", 12)
             pdf.set_text_color(44, 62, 80)
             pdf.cell(0, 10, "Detailed Minutes:", new_x="LMARGIN", new_y="NEXT")
