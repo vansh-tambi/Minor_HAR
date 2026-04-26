@@ -276,7 +276,17 @@ def generate_report(current_user):
     for act, mins in stats["totals"].items():
         summary_text += f"{act}: {mins:.1f} minutes, "
         
-    prompt = f"You are an AI health assistant. Based on this raw sensor data summary, write a highly professional, encouraging, one concise paragraph daily health report for the user. Do not include raw numbers if they are very small, just summarize the movement patterns. Data: {summary_text}"
+    prompt = (
+        f"You are an expert AI health and fitness assistant. Based on the following raw sensor data summary for today, "
+        f"write a comprehensive, highly professional, and encouraging daily health report for the user. "
+        f"Your report must include:\n"
+        f"1. A clear summary of the physical activities the user has engaged in throughout the day.\n"
+        f"2. Insights into their movement patterns, highlighting any positive trends or areas for improvement.\n"
+        f"3. Constructive, actionable suggestions for better health, posture, or maintaining an active lifestyle.\n"
+        f"4. Any other relevant wellness advice based on the data provided.\n"
+        f"Keep the tone supportive and clinical. Format the output nicely using Markdown.\n"
+        f"Data: {summary_text}"
+    )
     
     try:
         gen_model = genai.GenerativeModel("gemini-flash-latest")
