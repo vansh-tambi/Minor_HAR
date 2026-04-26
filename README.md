@@ -1,134 +1,141 @@
-# 🦾 Human Activity Recognition (HAR) Engine
-### **Real-Time Motion Intelligence with Hybrid Deep Learning & AI Health Reporting**
+# Human Activity Recognition (HAR) Engine
+### Real-Time Motion Intelligence with Hybrid Deep Learning & AI Health Reporting
 
 ![Dashboard Preview](docs/images/dashboard_preview.png)
 
 ---
 
-## 🌟 Overview
+## Overview
 
-The **HAR Engine** is a production-grade Human Activity Recognition system that transforms raw smartphone sensor data into actionable health insights. By leveraging a custom-trained **Conv1D + LSTM** hybrid model, the system classifies 8 distinct physical activities in real-time with **83% accuracy**.
+This repository contains an end-to-end Human Activity Recognition (HAR) system that classifies eight distinct physical activities using real-time smartphone sensor data. The application captures 6-axis inertial measurement unit (IMU) data—comprising accelerometer and gyroscope readings—and processes it through a hybrid Conv1D and LSTM neural network architecture. 
 
-Unlike traditional HAR systems, this project provides a complete end-to-end ecosystem: from live mobile sensor streaming to **AI-generated clinical health reports** powered by Google Gemini, securely stored in MongoDB, and shareable with healthcare providers.
-
----
-
-## 🚀 The Full Walkthrough
-
-### **Phase 1: Real-Time Data Acquisition**
-The journey begins on the **React-based Mobile Dashboard**. 
-1. **Sensor Streaming**: Using the W3C DeviceMotion API, the mobile browser captures 6-axis data (Accelerometer + Gyroscope) at **20Hz**.
-2. **Dynamic Windowing**: Samples are buffered into **3-second sliding windows** (60 samples each).
-3. **Cross-Origin Security**: The frontend is isolated using COOP/COEP headers to allow secure **Google OAuth 2.0** authentication even on mobile browsers.
-
-### **Phase 2: The ML "Brain" (Conv1D + LSTM)**
-When a data window reaches the **Flask Backend**, it undergoes a rigorous processing pipeline:
-1. **Signal Preprocessing**: 
-   - **Butterworth Filtering**: Removes high-frequency noise and separates gravity from body acceleration.
-   - **Feature Engineering**: Calculates Euclidean magnitudes for rotation-invariant motion intensity.
-2. **Hybrid Inference**: 
-   - **Conv1D Layers**: Extract spatial features across the 6 sensor channels.
-   - **LSTM Layers**: Model temporal dependencies, learning the "rhythm" of activities like walking vs. jogging.
-3. **Smoothing & Confidence**: A **Majority Voting** algorithm and **Confidence Thresholding** ensure the UI remains stable and doesn't flicker between classes.
-
-### **Phase 3: AI Insights & Clinical Reporting**
-The system doesn't just label activities—it understands your day.
-1. **Activity Logging**: Every verified movement is logged to **MongoDB Atlas**.
-2. **Gemini AI Analysis**: At the end of the day, the system aggregates your logs (total calories, active minutes, intensity) and feeds them to **Google Gemini 1.5 Flash**.
-3. **Professional Reports**: The AI generates a supportive, clinical summary of your health trends, which can be:
-   - Viewed on the web dashboard.
-   - **Shared** with a doctor or trainer via email.
-   - Exported as a **Professional PDF** with Matplotlib-generated activity distribution charts.
+In addition to real-time classification, the system features an automated health reporting module that aggregates daily activity logs and utilizes the Google Gemini API to generate structured, human-readable health summaries.
 
 ---
 
-## 🛠️ Technical Stack
+## Features
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 19, Vite, Chart.js, Framer Motion, Lucide, Google OAuth |
-| **Backend** | Flask (Python), Keras (TensorFlow), SciPy, JWT, PyMongo |
-| **Database** | MongoDB Atlas (Cloud NoSQL) |
-| **AI/ML** | Google Gemini 1.5 Flash, 1D-CNN + LSTM Hybrid Model |
-| **DevOps** | Vercel (Frontend), Local/LAN Hosting (Mobile testing) |
+- **Real-Time Data Acquisition:** Captures and buffers sensor data at 20Hz directly from mobile web browsers using the W3C DeviceMotion API.
+- **Deep Learning Architecture:** Utilizes a hybrid Conv1D + LSTM model designed to extract spatial features across sensor channels and model temporal dependencies over sliding time windows.
+- **Signal Preprocessing Pipeline:** Implements real-time Butterworth low-pass filtering for noise reduction and gravity separation, alongside magnitude feature engineering for rotation invariance.
+- **Automated Health Reporting:** Aggregates daily prediction logs (tracking active minutes, intensity, and estimated caloric expenditure) and generates descriptive health reports using LLM integration.
+- **Secure Authentication & Logging:** Integrates Google OAuth 2.0 for user authentication, JWT for session management, and MongoDB for persistent activity logging.
 
 ---
 
-## 🏗️ Project Architecture
+## System Architecture
 
 ```mermaid
 graph TD
-    subgraph "Mobile Device"
+    subgraph Client Application
         A["Mobile Browser (React)"] --> B["DeviceMotion API (20Hz)"]
         B --> C["Sliding Window Buffer (60 samples)"]
     end
 
-    subgraph "Cloud Backend (Flask)"
-        C -->|"60x6 JSON Window"| D["Signal Filter (Butterworth)"]
+    subgraph API Backend (Flask)
+        C -->|"HTTP POST /predict"| D["Signal Filter (Butterworth)"]
         D --> E["Feature Scaler"]
-        E --> F["Conv1D + LSTM Model"]
-        F --> G["Post-Processing (Majority Vote)"]
+        E --> F["Conv1D + LSTM Inference"]
+        F --> G["Temporal Smoothing (Majority Vote)"]
     end
 
-    subgraph "Intelligence Layer"
-        G --> H["MongoDB Logs"]
-        H --> I["Google Gemini AI"]
-        I --> J["Health Summary Report"]
-        J --> K["PDF Generation (Matplotlib/FPDF)"]
+    subgraph Data & External Services
+        G --> H["MongoDB (Activity Logs)"]
+        H --> I["Report Generator (Gemini API)"]
+        I --> J["PDF Export (FPDF/Matplotlib)"]
     end
 
-    K --> L["Final User Dashboard"]
+    J --> K["User Dashboard"]
 ```
 
 ---
 
-## 📊 Model Performance
+## Project Workflow
 
-The model was trained on a **massively augmented (30x)** dataset combining WISDM, Heterogeneity Activity Recognition, UCI HAR, and custom-recorded user data.
+### 1. Data Collection & Preprocessing
+The frontend buffers sensor readings into 3-second sliding windows (60 samples per window). Upon reaching the backend, the data undergoes causal Butterworth filtering to remove high-frequency noise and isolate body acceleration from gravitational forces.
 
-- **Global Accuracy**: 82.99%
-- **Jogging Precision**: 99%
-- **Eating Precision**: 96%
-- **Still Precision**: 94%
+### 2. Model Inference
+The preprocessed data is normalized and passed to the Keras model. The model consists of 1D Convolutional layers that capture local spatial patterns, followed by LSTM layers that analyze the sequence over time. To stabilize the user interface, the system applies a confidence thresholding mechanism and a majority voting algorithm across the most recent predictions.
 
-By prioritizing custom real-world data over laboratory datasets, the model handles the noise and variability of daily life far better than standard benchmark models.
+### 3. Reporting and Export
+Verified predictions are logged to the database. Upon user request, the system computes aggregated statistics (e.g., total active time, caloric burn) based on Metabolic Equivalent of Task (MET) values. This data is passed to the Gemini API to construct a professional health summary, which can be viewed in the dashboard or exported as a formatted PDF.
 
 ---
 
-## 🚀 Getting Started
+## Technology Stack
 
-### **1. Clone & Install**
+| Component | Technologies |
+| :--- | :--- |
+| **Frontend** | React, Vite, Chart.js, Framer Motion |
+| **Backend API** | Flask, PyJWT, PyMongo |
+| **Machine Learning** | TensorFlow / Keras, SciPy, Scikit-learn |
+| **Database** | MongoDB Atlas |
+| **External APIs** | Google OAuth 2.0, Google Gemini 1.5 Flash |
+
+---
+
+## Model Performance
+
+The classification model was trained on an aggregated dataset comprising samples from WISDM, Heterogeneity Activity Recognition, UCI HAR, and custom-recorded data. To improve robustness against real-world sensor noise, custom data was heavily augmented using techniques such as Gaussian jitter, magnitude scaling, and time warping.
+
+- **Overall Test Accuracy:** 82.99%
+- **Jogging Precision:** 99%
+- **Eating Precision:** 96%
+- **Still Precision:** 94%
+
+---
+
+## Setup Instructions
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+
+- MongoDB instance (local or Atlas)
+
+### 1. Repository Setup
 ```bash
 git clone https://github.com/your-username/Minor_HAR.git
 cd Minor_HAR
 ```
 
-### **2. Backend Setup**
+### 2. Backend Configuration
 ```bash
 cd backend
 pip install -r requirements.txt
-# Add MONGODB_URI, GEMINI_API_KEY, and VITE_GOOGLE_CLIENT_ID to .env
+```
+Create a `.env` file in the `backend` directory and configure the required environment variables:
+```env
+MONGODB_URI=your_mongodb_connection_string
+VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+JWT_SECRET=your_jwt_secret_key
+GEMINI_API_KEY=your_gemini_api_key
+```
+Start the backend server:
+```bash
 python app.py
 ```
 
-### **3. Frontend Setup**
+### 3. Frontend Configuration
 ```bash
 cd frontend
 npm install
+```
+Create a `.env` file in the `frontend` directory:
+```env
+VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+```
+Start the development server with network exposure:
+```bash
 npm run dev -- --host
 ```
 
-### **4. Mobile Connection**
-1. Ensure your phone and PC are on the same WiFi.
-2. Open the **Network URL** shown in the Vite terminal on your phone.
-3. Sign in, grant sensor permissions, and start moving!
+### 4. Client Connection
+To test the real-time sensor streaming, navigate to the network IP address provided by the Vite server output using a mobile device connected to the same local network.
 
 ---
 
-## 👨‍💻 Contributors
+## Contributors
 
-- **Vansh Tambi** ([vanshtambi@gmail.com](mailto:vanshtambi@gmail.com))
-- **Vivek Pasi** ([vivekpasi43@gmail.com](mailto:vivekpasi43@gmail.com))
-
----
-*Developed as part of the Minor Project at IIIT Bhopal, 2026.*
+- **Vansh Tambi** - [vanshtambi@gmail.com](mailto:vanshtambi@gmail.com)
+- **Vivek Pasi** - [vivekpasi43@gmail.com](mailto:vivekpasi43@gmail.com)
