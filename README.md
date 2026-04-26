@@ -1,141 +1,228 @@
-# Human Activity Recognition (HAR) Engine
-### Real-Time Motion Intelligence with Hybrid Deep Learning & AI Health Reporting
+# Minor HAR
+
+Real-time Human Activity Recognition (HAR) system with:
+
+- Mobile sensor capture (accelerometer + gyroscope) from browser
+- Hybrid deep learning inference (Conv1D + LSTM)
+- JWT-based authenticated reporting workflow
+- AI-generated daily health summaries (Gemini)
+- Report sharing and PDF export
 
 ![Dashboard Preview](docs/images/dashboard_preview.png)
 
----
+## What This Project Does
 
-## Overview
+This project is an end-to-end HAR pipeline split into three parts:
 
-This repository contains an end-to-end Human Activity Recognition (HAR) system that classifies eight distinct physical activities using real-time smartphone sensor data. The application captures 6-axis inertial measurement unit (IMU) data—comprising accelerometer and gyroscope readings—and processes it through a hybrid Conv1D and LSTM neural network architecture. 
+1. Frontend (React + Vite): captures sensor data at 20 Hz, buffers 60 samples (3 seconds), and sends windows to the backend.
+2. Backend (Flask): preprocesses sensor windows, performs model inference, smooths predictions, stores activity logs, and generates reports.
+3. Training/Data Pipeline (Python): prepares datasets from multiple sources, augments custom recordings, trains a Conv1D+LSTM model, and exports model artifacts.
 
-In addition to real-time classification, the system features an automated health reporting module that aggregates daily activity logs and utilizes the Google Gemini API to generate structured, human-readable health summaries.
+## Implemented Activity Classes
 
----
+The deployed model is trained for 7 core classes:
 
-## Features
+- Walking
+- Jogging
+- Stairs
+- Still
+- Eating
+- Hand Activity
+- Sports
 
-- **Real-Time Data Acquisition:** Captures and buffers sensor data at 20Hz directly from mobile web browsers using the W3C DeviceMotion API.
-- **Deep Learning Architecture:** Utilizes a hybrid Conv1D + LSTM model designed to extract spatial features across sensor channels and model temporal dependencies over sliding time windows.
-- **Signal Preprocessing Pipeline:** Implements real-time Butterworth low-pass filtering for noise reduction and gravity separation, alongside magnitude feature engineering for rotation invariance.
-- **Automated Health Reporting:** Aggregates daily prediction logs (tracking active minutes, intensity, and estimated caloric expenditure) and generates descriptive health reports using LLM integration.
-- **Secure Authentication & Logging:** Integrates Google OAuth 2.0 for user authentication, JWT for session management, and MongoDB for persistent activity logging.
+At inference time, a runtime class `Uncertain` is used when confidence is below threshold.
 
----
+## Tech Stack
 
-## System Architecture
+- Frontend: React 19, Vite, Axios, Chart.js, Framer Motion, Lucide
+- Backend: Flask, Flask-CORS, PyJWT, PyMongo, google-auth
+- ML/Signal Processing: TensorFlow/Keras, NumPy, SciPy, scikit-learn, pandas
+- Reporting: Google Gemini API, matplotlib, fpdf2
+- Database: MongoDB Atlas (or local MongoDB)
 
-```mermaid
-graph TD
-    subgraph Client Application
-        A["Mobile Browser (React)"] --> B["DeviceMotion API (20Hz)"]
-        B --> C["Sliding Window Buffer (60 samples)"]
-    end
+## Project Structure
 
-    subgraph API Backend (Flask)
-        C -->|"HTTP POST /predict"| D["Signal Filter (Butterworth)"]
-        D --> E["Feature Scaler"]
-        E --> F["Conv1D + LSTM Inference"]
-        F --> G["Temporal Smoothing (Majority Vote)"]
-    end
-
-    subgraph Data & External Services
-        G --> H["MongoDB (Activity Logs)"]
-        H --> I["Report Generator (Gemini API)"]
-        I --> J["PDF Export (FPDF/Matplotlib)"]
-    end
-
-    J --> K["User Dashboard"]
+```text
+Minor_HAR/
+|- backend/
+|  |- app.py                  # Flask API (auth, predict, reports, PDF)
+|  |- train_model.py          # Model training script
+|  |- requirements.txt
+|  |- har_model.keras         # Current deployed model artifact
+|  |- scaler.pkl
+|  |- label_encoder.pkl
+|  |- activity_names.pkl
+|  |- report.txt              # Latest training metrics artifact
+|  `- backup_model/
+|- frontend/
+|  |- src/
+|  |  |- App.jsx
+|  |  |- hooks/useAccelerometer.js
+|  |  `- components/
+|  |- package.json
+|  `- vite.config.js
+|- prepare_data.py            # Dataset extraction + preprocessing + augmentation
+|- download_wisdm.py          # WISDM download utility
+|- X_all.npy / y_all.npy      # Prepared training arrays
+|- docs/images/dashboard_preview.png
+`- README.md
 ```
 
----
+## Data and Model Pipeline
 
-## Project Workflow
+### 1) Dataset Preparation
 
-### 1. Data Collection & Preprocessing
-The frontend buffers sensor readings into 3-second sliding windows (60 samples per window). Upon reaching the backend, the data undergoes causal Butterworth filtering to remove high-frequency noise and isolate body acceleration from gravitational forces.
+`prepare_data.py` combines and standardizes data from:
 
-### 2. Model Inference
-The preprocessed data is normalized and passed to the Keras model. The model consists of 1D Convolutional layers that capture local spatial patterns, followed by LSTM layers that analyze the sequence over time. To stabilize the user interface, the system applies a confidence thresholding mechanism and a majority voting algorithm across the most recent predictions.
+- WISDM
+- Heterogeneity Activity Recognition
+- UCI HAR
+- Custom mobile recordings (`*.csv` at repository root)
 
-### 3. Reporting and Export
-Verified predictions are logged to the database. Upon user request, the system computes aggregated statistics (e.g., total active time, caloric burn) based on Metabolic Equivalent of Task (MET) values. This data is passed to the Gemini API to construct a professional health summary, which can be viewed in the dashboard or exported as a formatted PDF.
+Key preprocessing steps:
 
----
+- Butterworth low-pass filtering
+- Gravity/body acceleration separation
+- Magnitude features (`accel_mag`, `gyro_mag`) to form 8 channels
+- Sliding windows of 60 with step size 30
+- Heavy augmentation for custom recordings (jitter, scaling, time shift, warp, permutation, inversion)
 
-## Technology Stack
+### 2) Model Training
 
-| Component | Technologies |
-| :--- | :--- |
-| **Frontend** | React, Vite, Chart.js, Framer Motion |
-| **Backend API** | Flask, PyJWT, PyMongo |
-| **Machine Learning** | TensorFlow / Keras, SciPy, Scikit-learn |
-| **Database** | MongoDB Atlas |
-| **External APIs** | Google OAuth 2.0, Google Gemini 1.5 Flash |
+`backend/train_model.py`:
 
----
+- Loads `X_all.npy` and `y_all.npy`
+- Applies global feature scaling
+- Trains Conv1D + LSTM model with class weights
+- Saves artifacts to `backend/`
 
-## Model Performance
+Saved artifacts:
 
-The classification model was trained on an aggregated dataset comprising samples from WISDM, Heterogeneity Activity Recognition, UCI HAR, and custom-recorded data. To improve robustness against real-world sensor noise, custom data was heavily augmented using techniques such as Gaussian jitter, magnitude scaling, and time warping.
+- `backend/har_model.keras`
+- `backend/scaler.pkl`
+- `backend/label_encoder.pkl`
+- `backend/activity_names.pkl`
+- `backend/confusion_matrix.png`
+- `backend/report.txt`
 
-- **Overall Test Accuracy:** 82.99%
-- **Jogging Precision:** 99%
-- **Eating Precision:** 96%
-- **Still Precision:** 94%
+### 3) Runtime Inference
 
----
+`backend/app.py`:
 
-## Setup Instructions
+- Accepts 60x6 window on `POST /predict`
+- Converts to 60x8 engineered feature window
+- Applies scaler + model prediction
+- Applies confidence threshold and short majority voting smoothing
+
+## API Overview
+
+- `GET /` : health/status response
+- `POST /api/auth/google` : Google login exchange -> JWT
+- `POST /predict` : HAR inference endpoint
+- `POST /api/reports/generate` : generate daily AI report (auth required)
+- `GET /api/reports` : fetch own/shared reports (auth required)
+- `POST /api/reports/share` : share report by email (auth required)
+- `GET /api/reports/<report_id>/pdf` : export report PDF (auth required)
+
+Authorization format:
+
+```http
+Authorization: Bearer <jwt_token>
+```
+
+## Quick Start
 
 ### Prerequisites
-- Python 3.12+
-- Node.js 18+
-- MongoDB instance (local or Atlas)
 
-### 1. Repository Setup
+- Python 3.11+
+- Node.js 18+
+- npm
+- MongoDB (Atlas or local)
+
+### 1) Clone
+
 ```bash
-git clone https://github.com/your-username/Minor_HAR.git
+git clone https://github.com/vansh-tambi/Minor_HAR.git
 cd Minor_HAR
 ```
 
-### 2. Backend Configuration
+### 2) Backend Setup
+
 ```bash
 cd backend
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
-Create a `.env` file in the `backend` directory and configure the required environment variables:
+
+Create `backend/.env`:
+
 ```env
-MONGODB_URI=your_mongodb_connection_string
-VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
-JWT_SECRET=your_jwt_secret_key
-GEMINI_API_KEY=your_gemini_api_key
+PORT=5000
+DEBUG=True
+MONGODB_URI=<your_mongodb_uri>
+VITE_GOOGLE_CLIENT_ID=<your_google_client_id>
+JWT_SECRET=<your_jwt_secret>
+GEMINI_API_KEY=<your_gemini_api_key>
 ```
-Start the backend server:
+
+Run backend:
+
 ```bash
 python app.py
 ```
 
-### 3. Frontend Configuration
+### 3) Frontend Setup
+
+Open a new terminal:
+
 ```bash
 cd frontend
 npm install
 ```
-Create a `.env` file in the `frontend` directory:
+
+Create `frontend/.env`:
+
 ```env
-VITE_GOOGLE_CLIENT_ID=your_google_oauth_client_id
+VITE_API_BASE_URL=http://localhost:5000
+VITE_GOOGLE_CLIENT_ID=<your_google_client_id>
 ```
-Start the development server with network exposure:
+
+Run frontend:
+
 ```bash
-npm run dev -- --host
+npm run dev
 ```
 
-### 4. Client Connection
-To test the real-time sensor streaming, navigate to the network IP address provided by the Vite server output using a mobile device connected to the same local network.
+### 4) Mobile Testing
 
----
+- Keep phone and development machine on the same network.
+- Open the Vite LAN URL on your phone.
+- Start capture from dashboard.
+
+## Training Workflow (Optional)
+
+From repository root:
+
+```bash
+python prepare_data.py
+python backend/train_model.py
+```
+
+This regenerates `X_all.npy`, `y_all.npy`, and backend model artifacts.
+
+## Current Notes
+
+- `backend/report.txt` currently reflects the latest checked-in training metrics artifact.
+- Some large model/data artifacts are intentionally versioned for direct local inference.
+- The generated repository reports (`report_part1.md` to `report_part4.md`, `Minor_Project_Report_COMPLETE.md`) document academic project details.
+
+## Security Note
+
+Do not commit real credentials in `.env` files. If secrets were previously committed, rotate them immediately and replace with environment-managed secrets.
 
 ## Contributors
 
-- **Vansh Tambi** - [vanshtambi@gmail.com](mailto:vanshtambi@gmail.com)
-- **Vivek Pasi** - [vivekpasi43@gmail.com](mailto:vivekpasi43@gmail.com)
+- Vansh Tambi
+- Vivek Pasi
