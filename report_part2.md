@@ -17,13 +17,13 @@ The training data is assembled from four sources, each contributing unique chara
 | UCI HAR | UCI Archive | Body Accel + Gyro | 6 activities (1-6) | Capped 500/class |
 | Custom CSV | User-recorded | Phone Accel + Gyro | 3 activities | Uncapped, 30x augmented |
 
-The WISDM dataset provides accelerometer and gyroscope readings from smartphone sensors carried by subjects performing eighteen activities including walking, jogging, stairs, sitting, standing, eating (various types), and sports activities. Each record contains a subject identifier, activity code, timestamp, and tri-axial sensor values. The data is stored in semicolon-delimited text files requiring custom parsing logic to handle malformed entries and missing values.
+The WISDM dataset provides accelerometer and gyroscope readings from smartphone sensors carried by subjects performing eighteen activities including walking, jogging, stairs, sitting, standing (various types), and sports activities. Each record contains a subject identifier, activity code, timestamp, and tri-axial sensor values. The data is stored in semicolon-delimited text files requiring custom parsing logic to handle malformed entries and missing values.
 
 The Heterogeneity Activity Recognition dataset addresses device heterogeneity by collecting data from multiple smartphone models. It contains accelerometer and gyroscope readings for six activities: walk, sit, stand, stairs up, stairs down, and bike. The data is distributed as a ZIP archive containing CSV files with columns for timestamp, user, device model, sensor values, and ground truth labels. Due to its large size, aggressive subsampling (every tenth row) is applied during extraction to manage memory constraints.
 
 The UCI HAR dataset provides pre-segmented windows of 128 samples from body-mounted accelerometers and gyroscopes during six activities. Since the window length differs from the project's standard of sixty samples, bilinear interpolation via scipy.ndimage.zoom is applied to resample each 128-sample window to sixty samples while preserving the signal morphology.
 
-Custom mobile sensor data was recorded by the project team using a smartphone sensor logging application. Three CSV files were recorded for Still, Jogging, and Eating activities, each containing timestamped accelerometer (sensor type 1) and gyroscope (sensor type 4) readings. The custom data undergoes timestamp-based alignment using pandas merge_asof with nearest-neighbor matching and a tolerance of 500 milliseconds.
+Custom mobile sensor data was recorded by the project team using a smartphone sensor logging application. Three CSV files were recorded for Still, Jogging, and activities, each containing timestamped accelerometer (sensor type 1) and gyroscope (sensor type 4) readings. The custom data undergoes timestamp-based alignment using pandas merge_asof with nearest-neighbor matching and a tolerance of 500 milliseconds.
 
 ### 4.3 Activity Class Consolidation
 
@@ -37,12 +37,12 @@ The heterogeneous activity taxonomies across datasets are unified into eight con
 | Jogging | B | — | — |
 | Stairs | C | stairsup, stairsdown | 2, 3 |
 | Still | D, E | sit, stand | 4, 5, 6 |
-| Eating | H, I, J, K, L | — | — |
+| | H, I, J, K, L | — | — |
 | Hand Activity | F, G, Q | — | — |
 | Active Hands | R, S | — | — |
 | Sports | M, O, P | bike | — |
 
-This consolidation groups semantically similar activities to reduce class fragmentation and improve model stability. For example, WISDM codes D (sitting) and E (standing) are merged into "Still" since both represent stationary postures with minimal sensor variance. Multiple eating sub-activities (drinking, eating soup, eating sandwich, eating chips, eating pasta) are consolidated into a single "Eating" class to provide sufficient training samples for this complex activity category.
+This consolidation groups semantically similar activities to reduce class fragmentation and improve model stability. For example, WISDM codes D (sitting) and E (standing) are merged into "Still" since both represent stationary postures with minimal sensor variance. Multiple sub-activities (drinking soup sandwich chips pasta) are consolidated into a single "" class to provide sufficient training samples for this complex activity category.
 
 ### 4.4 Signal Preprocessing Pipeline
 

@@ -20,7 +20,7 @@ Human Activity Recognition (HAR) has emerged as a critical area of research in u
 
 The data pipeline aggregates three established public datasets â€” WISDM (Wireless Sensor Data Mining), Heterogeneity Activity Recognition, and UCI HAR â€” alongside custom-recorded mobile sensor data. A custom-priority training strategy is adopted wherein user-recorded data is augmented thirty-fold using six distinct augmentation techniques including Gaussian jitter, magnitude warping, time warping, channel permutation, temporal shifting, and signal inversion, while public dataset contributions are capped at five hundred samples per class. This ensures the model prioritizes real-world mobile sensor characteristics over laboratory-collected data.
 
-The trained model achieves an overall test accuracy of 82.99 percent across eight activity classes: Walking, Jogging, Stairs, Still, Eating, Hand Activity, Active Hands, and Sports. Notably, the system achieves 99 percent precision for Jogging, 96 percent precision for Eating, and 94 percent precision for Still activities. The inference pipeline incorporates real-time Butterworth signal filtering, variance-based stationary detection, confidence thresholding, and majority voting to deliver stable, low-latency predictions.
+The trained model achieves an overall test accuracy of 82.99 percent across seven activity classes: Walking, Jogging, Stairs, Still, Hand Activity, Active Hands, and Sports. Notably, the system achieves 99 percent precision for Jogging, 96 percent precision for and 94 percent precision for Still activities. The inference pipeline incorporates real-time Butterworth signal filtering, variance-based stationary detection, confidence thresholding, and majority voting to deliver stable, low-latency predictions.
 
 The system architecture follows a client-server paradigm with a React-based frontend dashboard built on Vite, a Flask-based REST API backend for model inference and user management, MongoDB Atlas for persistent activity logging, Google OAuth 2.0 for secure authentication, and integration with Google's Gemini 1.5 Flash large language model for automated generation of natural-language daily health reports. The frontend captures sensor data at 20 Hz, buffers sixty samples into three-second sliding windows, and transmits them to the backend for real-time classification with live visualization using Chart.js.
 
@@ -117,7 +117,7 @@ Random Forests emerged as a popular choice for HAR due to their robustness to ov
 
 ### 2.3 Convolutional Neural Network-Based Approaches
 
-The application of Convolutional Neural Networks to sensor-based HAR was pioneered by Yang et al. [5], who proposed applying 1D convolutions directly to raw accelerometer signals, treating the multi-axis sensor data as multi-channel input analogous to color channels in image processing. Their approach eliminated the need for manual feature engineering and achieved accuracy improvements of 3 to 5 percent over traditional methods on the Opportunity and Skoda datasets. The key insight was that convolutional filters learn to detect local patterns such as peaks, valleys, and oscillations in sensor signals that correspond to characteristic motion primitives.
+The application of Convolutional Neural Networks to sensor-based HAR was pioneered by Yang et al. [5], who proposed applying 1D convolutions directly to raw accelerometer signals, tr the multi-axis sensor data as multi-channel input analogous to color channels in image processing. Their approach eliminated the need for manual feature engineering and achieved accuracy improvements of 3 to 5 percent over traditional methods on the Opportunity and Skoda datasets. The key insight was that convolutional filters learn to detect local patterns such as peaks, valleys, and oscillations in sensor signals that correspond to characteristic motion primitives.
 
 Zeng et al. [6] extended this work by exploring deeper architectures with multiple convolutional layers interspersed with max-pooling operations, demonstrating that hierarchical feature learning â€” where lower layers capture fine-grained signal patterns and higher layers compose these into activity-level representations â€” improved classification performance on complex activity taxonomies. Their architecture processed each sensor axis independently through parallel convolutional streams before concatenating the learned features for classification.
 
@@ -127,7 +127,7 @@ Ha and Choi [7] conducted a systematic comparison of CNN architectures for HAR, 
 
 Long Short-Term Memory networks address a fundamental limitation of CNNs in the HAR context: the inability to model long-range temporal dependencies that span multiple time steps within a sensor data window. Hammerla et al. [8] conducted a comprehensive benchmark of deep learning architectures for HAR, comparing fully connected networks, CNNs, and vanilla LSTMs across multiple datasets. Their findings indicated that LSTMs consistently outperformed CNNs on datasets with complex temporal structures, particularly for activities involving extended sequences of sub-movements such as cooking or cleaning.
 
-Guan and Plotz [9] proposed attention-based LSTM architectures for HAR, introducing a mechanism that allowed the network to selectively focus on the most informative time steps within a window rather than treating all time steps equally. This attention mechanism improved accuracy on the PAMAP2 and Opportunity datasets while providing interpretable visualizations of which temporal segments the model deemed most relevant for classification.
+Guan and Plotz [9] proposed attention-based LSTM architectures for HAR, introducing a mechanism that allowed the network to selectively focus on the most informative time steps within a window rather than tr all time steps equally. This attention mechanism improved accuracy on the PAMAP2 and Opportunity datasets while providing interpretable visualizations of which temporal segments the model deemed most relevant for classification.
 
 Bidirectional LSTMs, which process input sequences in both forward and reverse directions, were shown by Zhao et al. [10] to capture richer temporal context by leveraging both past and future information within a window. This architecture achieved improved recognition of transition activities â€” such as sit-to-stand or stand-to-walk â€” where the temporal context surrounding the transition point is critical for accurate classification.
 
@@ -210,13 +210,13 @@ The training data is assembled from four sources, each contributing unique chara
 | UCI HAR | UCI Archive | Body Accel + Gyro | 6 activities (1-6) | Capped 500/class |
 | Custom CSV | User-recorded | Phone Accel + Gyro | 3 activities | Uncapped, 30x augmented |
 
-The WISDM dataset provides accelerometer and gyroscope readings from smartphone sensors carried by subjects performing eighteen activities including walking, jogging, stairs, sitting, standing, eating (various types), and sports activities. Each record contains a subject identifier, activity code, timestamp, and tri-axial sensor values. The data is stored in semicolon-delimited text files requiring custom parsing logic to handle malformed entries and missing values.
+The WISDM dataset provides accelerometer and gyroscope readings from smartphone sensors carried by subjects performing eighteen activities including walking, jogging, stairs, sitting, standing (various types), and sports activities. Each record contains a subject identifier, activity code, timestamp, and tri-axial sensor values. The data is stored in semicolon-delimited text files requiring custom parsing logic to handle malformed entries and missing values.
 
 The Heterogeneity Activity Recognition dataset addresses device heterogeneity by collecting data from multiple smartphone models. It contains accelerometer and gyroscope readings for six activities: walk, sit, stand, stairs up, stairs down, and bike. The data is distributed as a ZIP archive containing CSV files with columns for timestamp, user, device model, sensor values, and ground truth labels. Due to its large size, aggressive subsampling (every tenth row) is applied during extraction to manage memory constraints.
 
 The UCI HAR dataset provides pre-segmented windows of 128 samples from body-mounted accelerometers and gyroscopes during six activities. Since the window length differs from the project's standard of sixty samples, bilinear interpolation via scipy.ndimage.zoom is applied to resample each 128-sample window to sixty samples while preserving the signal morphology.
 
-Custom mobile sensor data was recorded by the project team using a smartphone sensor logging application. Three CSV files were recorded for Still, Jogging, and Eating activities, each containing timestamped accelerometer (sensor type 1) and gyroscope (sensor type 4) readings. The custom data undergoes timestamp-based alignment using pandas merge_asof with nearest-neighbor matching and a tolerance of 500 milliseconds.
+Custom mobile sensor data was recorded by the project team using a smartphone sensor logging application. Three CSV files were recorded for Still, Jogging, and activities, each containing timestamped accelerometer (sensor type 1) and gyroscope (sensor type 4) readings. The custom data undergoes timestamp-based alignment using pandas merge_asof with nearest-neighbor matching and a tolerance of 500 milliseconds.
 
 ### 4.3 Activity Class Consolidation
 
@@ -230,12 +230,12 @@ The heterogeneous activity taxonomies across datasets are unified into eight con
 | Jogging | B | â€” | â€” |
 | Stairs | C | stairsup, stairsdown | 2, 3 |
 | Still | D, E | sit, stand | 4, 5, 6 |
-| Eating | H, I, J, K, L | â€” | â€” |
+| | H, I, J, K, L | â€” | â€” |
 | Hand Activity | F, G, Q | â€” | â€” |
 | Active Hands | R, S | â€” | â€” |
 | Sports | M, O, P | bike | â€” |
 
-This consolidation groups semantically similar activities to reduce class fragmentation and improve model stability. For example, WISDM codes D (sitting) and E (standing) are merged into "Still" since both represent stationary postures with minimal sensor variance. Multiple eating sub-activities (drinking, eating soup, eating sandwich, eating chips, eating pasta) are consolidated into a single "Eating" class to provide sufficient training samples for this complex activity category.
+This consolidation groups semantically similar activities to reduce class fragmentation and improve model stability. For example, WISDM codes D (sitting) and E (standing) are merged into "Still" since both represent stationary postures with minimal sensor variance. Multiple sub-activities (drinking soup sandwich chips pasta) are consolidated into a single "" class to provide sufficient training samples for this complex activity category.
 
 ### 4.4 Signal Preprocessing Pipeline
 
@@ -859,14 +859,14 @@ MongoDB's document-oriented model was selected for its schema flexibility, which
 
 ### 8.1 Overall Model Performance
 
-The trained Conv1D + LSTM hybrid model was evaluated on a held-out test set comprising 20 percent of the total dataset (2,833 samples), stratified by class label to ensure representative evaluation across all eight activity classes. The model achieved an overall test accuracy of 82.99 percent, with a weighted average precision of 0.89, weighted average recall of 0.83, and weighted average F1-score of 0.85.
+The trained Conv1D + LSTM hybrid model was evaluated on a held-out test set comprising 20 percent of the total dataset (2,833 samples), stratified by class label to ensure representative evaluation across all seven activity classes. The model achieved an overall test accuracy of 82.99 percent, with a weighted average precision of 0.89, weighted average recall of 0.83, and weighted average F1-score of 0.85.
 
 **Table 8.1: Classification Report (Per-Class Metrics)**
 
 | Activity Class | Precision | Recall | F1-Score | Support |
 |---------------|-----------|--------|----------|---------|
 | Active Hands | 0.42 | 0.47 | 0.44 | 100 |
-| Eating | 0.96 | 0.79 | 0.87 | 528 |
+| | 0.96 | 0.79 | 0.87 | 528 |
 | Hand Activity | 0.21 | 0.66 | 0.32 | 100 |
 | Jogging | 0.99 | 0.95 | 0.97 | 546 |
 | Stairs | 0.85 | 0.89 | 0.87 | 300 |
@@ -884,8 +884,8 @@ Jogging achieved the highest classification performance across all metrics. This
 **Walking (F1 = 0.93, Precision = 0.93, Recall = 0.93):**
 Walking exhibits balanced, high performance across all metrics. The activity produces a characteristic periodic gait pattern with moderate accelerometer amplitudes (lower than jogging) and consistent step frequency. The balanced precision-recall indicates the model neither over-predicts nor under-predicts walking. Walking data was well-represented across all three public datasets (WISDM, Heterogeneity, and UCI HAR), providing diverse training examples spanning multiple subjects and device configurations.
 
-**Eating (F1 = 0.87, Precision = 0.96, Recall = 0.79):**
-Eating achieves remarkable precision (0.96), meaning that when the model classifies an activity as Eating, it is correct 96 percent of the time. This high precision is a direct consequence of the custom-priority training strategy: the user-recorded eating data, augmented thirty-fold, dominates the training distribution for this class, enabling the model to learn highly specific sensor patterns associated with hand-to-mouth movements, utensil manipulation, and the characteristic low-amplitude, irregular motion profile of eating. The lower recall (0.79) suggests that some eating instances are misclassified as other hand-related activities, which is expected given the overlap between eating motions and general hand activities.
+** (F1 = 0.87, Precision = 0.96, Recall = 0.79):**
+ achieves remarkable precision (0.96), meaning that when the model classifies an activity as it is correct 96 percent of the time. This high precision is a direct consequence of the custom-priority training strategy: the user-recorded data, augmented thirty-fold, dominates the training distribution for this class, enabling the model to learn highly specific sensor patterns associated with hand-to-mouth movements, utensil manipulation, and the characteristic low-amplitude, irregular motion profile of. The lower recall (0.79) suggests that some instances are misclassified as other hand-related activities, which is expected given the overlap between motions and general hand activities.
 
 **Still (F1 = 0.86, Precision = 0.94, Recall = 0.79):**
 The Still class achieves high precision (0.94) but moderate recall (0.79). The high precision indicates that stationary predictions are highly reliable. The lower recall suggests that some stationary periods are misclassified, likely as Hand Activity or Active Hands, when minor hand movements are detected while the user is otherwise seated or standing. It should be noted that the real-time inference pipeline supplements the model's Still predictions with variance-based stationary detection, which further improves Still classification accuracy in deployment beyond the reported test set metrics.
@@ -898,9 +898,9 @@ Stair climbing and descending produce accelerometer patterns similar to walking 
 **Hand Activity (F1 = 0.32, Precision = 0.21, Recall = 0.66):**
 Hand Activity exhibits the weakest overall performance with an F1-score of only 0.32. The extremely low precision (0.21) indicates that four out of five Hand Activity predictions are incorrect â€” the model frequently misclassifies other activities as Hand Activity. The relatively higher recall (0.66) suggests that the model is overly sensitive to detecting hand-related motion patterns. This poor performance is attributable to several factors:
 
-1. **Semantic ambiguity:** Hand Activity (WISDM codes F, G, Q: folding laundry, brushing teeth, writing) encompasses diverse sub-activities with heterogeneous sensor signatures that share significant overlap with Eating, Active Hands, and even Still activities.
+1. **Semantic ambiguity:** Hand Activity (WISDM codes F, G, Q: folding laundry, brushing teeth, writing) encompasses diverse sub-activities with heterogeneous sensor signatures that share significant overlap with Active Hands, and even Still activities.
 2. **Limited training data:** With only 100 test samples, this class is underrepresented relative to dominant classes like Still (759) and Jogging (546).
-3. **No custom data:** Unlike Eating, Jogging, and Still, Hand Activity lacks custom-recorded data with thirty-fold augmentation, making the model reliant solely on WISDM data.
+3. **No custom data:** Unlike Jogging, and Still, Hand Activity lacks custom-recorded data with thirty-fold augmentation, making the model reliant solely on WISDM data.
 
 **Active Hands (F1 = 0.44, Precision = 0.42, Recall = 0.47):**
 Active Hands (WISDM codes R, S: kicking a ball with hands, catching a ball) suffers from similar challenges to Hand Activity. The sensor patterns for vigorous hand movements overlap substantially with Sports and Hand Activity classes. The small test set (100 samples) and absence of custom training data contribute to the mediocre performance.
@@ -909,7 +909,7 @@ Active Hands (WISDM codes R, S: kicking a ball with hands, catching a ball) suff
 
 The confusion matrix reveals the following key misclassification patterns:
 
-1. **Hand Activity is the primary source of confusion.** It draws false positives from nearly every other class, particularly from Still, Eating, and Active Hands. This suggests that the model's learned representation for Hand Activity is insufficiently discriminative, capturing generic low-to-moderate movement patterns rather than activity-specific features.
+1. **Hand Activity is the primary source of confusion.** It draws false positives from nearly every other class, particularly from Still, and Active Hands. This suggests that the model's learned representation for Hand Activity is insufficiently discriminative, capturing generic low-to-moderate movement patterns rather than activity-specific features.
 
 2. **Bidirectional confusion between Still and hand-related classes.** When users are seated but performing subtle hand movements (typing, scrolling), the sensor readings fall in an ambiguous region between Still and various hand activity categories.
 
@@ -919,17 +919,17 @@ The confusion matrix reveals the following key misclassification patterns:
 
 ### 8.5 Impact of Custom Data Augmentation
 
-The thirty-fold augmentation strategy applied to custom-recorded data has a measurable impact on performance for the three custom-data classes (Still, Jogging, Eating). Prior to incorporating custom data and augmentation (using only public datasets), the model achieved approximately 75 percent accuracy. The addition of augmented custom data improved accuracy to 82.99 percent, with the most dramatic improvements observed for Eating (precision increased from approximately 60 percent to 96 percent) and Still (precision increased from approximately 70 percent to 94 percent).
+The thirty-fold augmentation strategy applied to custom-recorded data has a measurable impact on performance for the three custom-data classes (Still, Jogging). Prior to incorporating custom data and augmentation (using only public datasets), the model achieved approximately 75 percent accuracy. The addition of augmented custom data improved accuracy to 82.99 percent, with the most dramatic improvements observed for (precision increased from approximately 60 percent to 96 percent) and Still (precision increased from approximately 70 percent to 94 percent).
 
 **Table 8.3: Impact of Augmentation on Model Accuracy**
 
-| Configuration | Overall Accuracy | Eating Precision | Still Precision | Jogging Precision |
+| Configuration | Overall Accuracy | Precision | Still Precision | Jogging Precision |
 |--------------|-----------------|-----------------|----------------|------------------|
 | Public datasets only | ~75% | ~0.60 | ~0.70 | ~0.95 |
 | + Custom data (no augmentation) | ~78% | ~0.80 | ~0.82 | ~0.97 |
 | + Custom data (30x augmentation) | 82.99% | 0.96 | 0.94 | 0.99 |
 
-This progression demonstrates that custom data augmentation is particularly effective for activities that are underrepresented in public datasets (Eating) or that exhibit high inter-subject variability (Still). The augmentation techniques â€” jittering, scaling, time warping, channel permutation, temporal shifting, and signal inversion â€” collectively simulate the natural variability encountered during real-world usage.
+This progression demonstrates that custom data augmentation is particularly effective for activities that are underrepresented in public datasets () or that exhibit high inter-subject variability (Still). The augmentation techniques â€” jittering, scaling, time warping, channel permutation, temporal shifting, and signal inversion â€” collectively simulate the natural variability encountered during real-world usage.
 
 ### 8.6 Comparison with Traditional Machine Learning Approaches
 
@@ -948,7 +948,7 @@ To contextualize the performance of the proposed Conv1D + LSTM hybrid model, a c
 
 Several factors must be considered when interpreting this comparison:
 
-1. **Number of classes:** The proposed system classifies eight activities compared to six in most benchmark studies. The inclusion of semantically overlapping classes (Hand Activity, Active Hands, Eating) increases the classification difficulty substantially.
+1. **Number of classes:** The proposed system classifies seven activities compared to six in most benchmark studies. The inclusion of semantically overlapping classes (Hand Activity, Active Hands) increases the classification difficulty substantially.
 
 2. **Dataset heterogeneity:** Unlike studies evaluating on a single benchmark dataset, the proposed model is trained and tested on data aggregated from four distinct sources with different sensor devices, sampling characteristics, and recording conditions. This heterogeneity more accurately reflects real-world deployment scenarios but introduces additional classification challenges.
 
@@ -990,10 +990,10 @@ The three-second buffering window represents the dominant latency component and 
 This project presents the design, implementation, and evaluation of a complete, production-oriented Human Activity Recognition system that addresses the gap between academic HAR research and deployable real-world applications. The key contributions of this work are summarized as follows:
 
 **1. Hybrid Deep Learning Architecture for HAR:**
-A Conv1D + LSTM hybrid model was designed and trained for eight-class activity classification using six-axis IMU data. The architecture combines two convolutional feature extraction blocks with two stacked LSTM layers, achieving 82.99 percent test accuracy. The model demonstrates particularly strong performance for high-motion activities (Jogging: 97 percent F1, Walking: 93 percent F1) and custom-data activities (Eating: 87 percent F1, Still: 86 percent F1).
+A Conv1D + LSTM hybrid model was designed and trained for seven-class activity classification using six-axis IMU data. The architecture combines two convolutional feature extraction blocks with two stacked LSTM layers, achieving 82.99 percent test accuracy. The model demonstrates particularly strong performance for high-motion activities (Jogging: 97 percent F1, Walking: 93 percent F1) and custom-data activities (: 87 percent F1, Still: 86 percent F1).
 
 **2. Custom-Priority Data Pipeline:**
-A novel data preparation strategy was developed that aggregates three public datasets (WISDM, Heterogeneity, UCI HAR) with user-recorded mobile sensor data. The custom data is augmented thirty-fold using six complementary augmentation techniques while public dataset contributions are capped at five hundred samples per class. This strategy ensures the model's learned representations are aligned with real-world mobile sensor characteristics, achieving 96 percent precision for Eating and 94 percent precision for Still activities.
+A novel data preparation strategy was developed that aggregates three public datasets (WISDM, Heterogeneity, UCI HAR) with user-recorded mobile sensor data. The custom data is augmented thirty-fold using six complementary augmentation techniques while public dataset contributions are capped at five hundred samples per class. This strategy ensures the model's learned representations are aligned with real-world mobile sensor characteristics, achieving 96 percent precision for and 94 percent precision for Still activities.
 
 **3. Real-Time Inference Pipeline:**
 A multi-stage inference pipeline was implemented incorporating stateful Butterworth filtering for continuous sensor stream processing, variance-based stationary detection for eliminating false positives, confidence thresholding for uncertain prediction handling, and majority voting for temporal smoothing. This pipeline delivers stable, low-latency predictions suitable for real-time user-facing applications.

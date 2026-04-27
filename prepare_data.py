@@ -16,7 +16,6 @@ ACTIVITY_MERGE = {
     "A": "Walking", "B": "Jogging", "C": "Stairs",
     "D": "Still", "E": "Still",
     "F": "Hand Activity", "G": "Hand Activity", "Q": "Hand Activity",
-    "H": "Eating", "I": "Eating", "J": "Eating", "K": "Eating", "L": "Eating",
     "M": "Sports", "O": "Sports", "P": "Sports",
     "R": "Hand Activity", "S": "Hand Activity",  # Was "Active Hands" — merged with Hand Activity
     
@@ -340,7 +339,6 @@ def extract_all_custom():
     custom_files = {
         "still data.csv": "Still",
         "jogging.csv": "Jogging",
-        "eating.csv": "Eating",
         "sensor_recording_20260424_131838.csv": "Stairs",
         "sensor_recording_20260424_184254.csv": "Stairs",
         "sensor_recording_20260424_184845.csv": "Stairs",

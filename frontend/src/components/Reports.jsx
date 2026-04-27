@@ -29,7 +29,6 @@ const ACTIVITY_COLORS = {
   "Jogging": "rgba(191, 97, 106, 0.85)",     // Muted Red
   "Stairs": "rgba(208, 135, 112, 0.85)",     // Muted Orange
   "Still": "rgba(163, 190, 140, 0.85)",      // Muted Green
-  "Eating": "rgba(180, 142, 173, 0.85)",     // Muted Purple
   "Hand Activity": "rgba(235, 203, 139, 0.85)", // Muted Yellow
   "Sports": "rgba(136, 192, 208, 0.85)",     // Muted Cyan
 };

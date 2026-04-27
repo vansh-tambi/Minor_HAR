@@ -48,7 +48,6 @@ MET_VALUES = {
     "Walking": 3.5,
     "Jogging": 7.5,
     "Stairs": 8.0,
-    "Eating": 1.5,
     "Hand Activity": 2.0,
     "Sports": 6.0,
     "Uncertain": 1.0

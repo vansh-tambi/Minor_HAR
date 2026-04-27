@@ -39,8 +39,8 @@ BATCH_SIZE      = 64
 TEST_SIZE       = 0.2
 RANDOM_STATE    = 42
 
-ACTIVITY_NAMES_SORTED = sorted(["Walking", "Jogging", "Stairs", "Still", "Hand Activity", "Eating", "Sports"])
-NUM_CLASSES = len(ACTIVITY_NAMES_SORTED)  # 7
+ACTIVITY_NAMES_SORTED = sorted(["Walking", "Jogging", "Stairs", "Still", "Hand Activity", "Sports"])
+NUM_CLASSES = len(ACTIVITY_NAMES_SORTED)  # 6
 
 def preprocess_numpy(X_file, y_file):
     print("=" * 60)

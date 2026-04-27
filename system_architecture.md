@@ -136,6 +136,6 @@ graph TD
 2. **Buffer**: It buffers these readings until it reaches **60 samples (3 seconds)**.
 3. **Transmit**: The 60-sample window is sent over HTTP to the Flask `POST /predict` API.
 4. **Engineer**: Flask passes the data through `SciPy` Butterworth filters, computes magnitudes, and shapes it into an `(1, 60, 8)` tensor.
-5. **Infer**: The pre-trained Keras model predicts the activity out of 7 possible classes (Walking, Jogging, Stairs, Still, Eating, Hand Activity, Sports).
+5. **Infer**: The pre-trained Keras model predicts the activity out of 6 possible classes (Walking, Jogging, Stairs, Still, Hand Activity, Sports).
 6. **Smooth**: A sliding window majority-vote mechanism prevents erratic UI flickering.
 7. **Store & Analyze**: The final predictions are saved to MongoDB. Once a day, the Gemini API is called to summarize the day's activity timeline into a human-readable health report.

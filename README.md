@@ -26,7 +26,6 @@ The deployed model is trained for 7 core classes:
 - Jogging
 - Stairs
 - Still
-- Eating
 - Hand Activity
 - Sports
 
