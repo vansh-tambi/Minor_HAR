@@ -1,5 +1,5 @@
 """
-Train CNN on phone accelerometer + gyroscope data from unified HAR datasets.
+Train optimized Hybrid CNN + BiLSTM + Attention model for HAR.
 Run from Minor_HAR folder: python backend/train_model.py
 Saves: backend/har_model.keras, scaler.pkl, label_encoder.pkl,
        activity_names.pkl, confusion_matrix.png, report.txt
@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import pickle
 import matplotlib
-matplotlib.use("Agg")  # non-interactive backend for saving figures
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -18,23 +18,31 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
-from keras.models import Sequential
+import keras
+from keras.models import Model
 from keras.layers import (
-    Conv1D, MaxPooling1D, Dense, Dropout,
+    Input, Conv1D, MaxPooling1D, Dense, Dropout,
     BatchNormalization, LSTM, Bidirectional,
-    GlobalAveragePooling1D
+    GlobalAveragePooling1D, Multiply, Permute,
+    RepeatVector, Flatten, Activation, Lambda,
+    Add, Concatenate
 )
 from keras.regularizers import l2
 from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
+try:
+    import keras.ops as ops
+except ImportError:
+    import keras.backend as ops
+
 # ── Config ────────────────────────────────────────────────────────────────────
 OUTPUT_DIR      = "backend"
 FREQUENCY       = 20        # Hz
-TIME_PERIOD     = 3         # seconds
+TIME_PERIOD     = 3          # seconds
 FRAME_SIZE      = FREQUENCY * TIME_PERIOD   # 60 samples per window
 NUM_CHANNELS    = 8                         # accel(X,Y,Z) + gyro(X,Y,Z) + mags
-EPOCHS          = 60
+EPOCHS          = 100
 BATCH_SIZE      = 64
 TEST_SIZE       = 0.2
 RANDOM_STATE    = 42
@@ -42,83 +50,140 @@ RANDOM_STATE    = 42
 ACTIVITY_NAMES_SORTED = sorted(["Walking", "Jogging", "Stairs", "Still", "Hand Activity", "Sports"])
 NUM_CLASSES = len(ACTIVITY_NAMES_SORTED)  # 6
 
+
+# ── Focal Loss for class imbalance ────────────────────────────────────────────
+def focal_loss(gamma=2.0, alpha=0.25):
+    """Focal loss — down-weights easy/majority samples, focuses on hard ones."""
+    def focal_loss_fn(y_true, y_pred):
+        y_true = ops.cast(y_true, 'int32')
+        y_true_one_hot = ops.one_hot(ops.reshape(y_true, [-1]), NUM_CLASSES)
+        y_pred = ops.clip(y_pred, 1e-7, 1.0 - 1e-7)
+        cross_entropy = -y_true_one_hot * ops.log(y_pred)
+        weight = alpha * y_true_one_hot * ops.power(1.0 - y_pred, gamma)
+        loss = weight * cross_entropy
+        return ops.sum(loss, axis=-1)
+    return focal_loss_fn
+
+
+# ── Label Smoothing ───────────────────────────────────────────────────────────
+def smooth_labels(y, num_classes, smoothing=0.1):
+    """Apply label smoothing to prevent overconfident predictions."""
+    one_hot = np.eye(num_classes)[y]
+    one_hot = one_hot * (1.0 - smoothing) + smoothing / num_classes
+    return one_hot
+
+
 def preprocess_numpy(X_file, y_file):
     print("=" * 60)
     print("  LOADING PREPARED ARRAYS")
     print("=" * 60)
-    
-    X_all = np.load(X_file) # (N, 200, 6)
-    y_raw = np.load(y_file) # (N,)
-    
+
+    X_all = np.load(X_file)
+    y_raw = np.load(y_file)
+
     label_encoder = LabelEncoder()
     label_encoder.fit(ACTIVITY_NAMES_SORTED)
     y_all = label_encoder.transform(y_raw)
-    
-    print("  Fitting global StandardScaler on 6 channels...")
+
+    print("  Fitting global StandardScaler on 8 channels...")
     N, steps, channels = X_all.shape
     X_flat = X_all.reshape(-1, channels)
-    
+
     scaler = StandardScaler()
     X_flat_scaled = scaler.fit_transform(X_flat)
     X_all_scaled = X_flat_scaled.reshape(N, steps, channels)
-    
-    # Print class distribution
+
     print("\n  Class distribution:")
     unique, counts = np.unique(y_all, return_counts=True)
     for u, c in zip(unique, counts):
         name = label_encoder.inverse_transform([u])[0]
         print(f"    {name:15s}: {c:5d} frames ({c/len(y_all)*100:.1f}%)")
-        
+
     return X_all_scaled, y_all, label_encoder, scaler
+
+
+def attention_block(inputs):
+    """Temporal attention: learn which timesteps matter most."""
+    features = inputs.shape[-1]
+
+    # Compute attention scores
+    a = Dense(features, activation='tanh')(inputs)
+    a = Dense(1, activation='linear')(a)
+    a = Flatten()(a)
+    a = Activation('softmax')(a)
+    a = RepeatVector(features)(a)
+    a = Permute((2, 1))(a)
+
+    # Apply attention
+    output = Multiply()([inputs, a])
+    return output
+
 
 def create_model(input_shape, num_classes):
     """
-    Build a deep hybrid Conv1D + LSTM model for maximum accuracy.
-    Input shape: (FRAME_SIZE, NUM_CHANNELS) = (60, 8)
+    Optimized Hybrid Conv1D + Bidirectional LSTM + Attention model.
+    - Deeper CNN feature extraction (3 blocks)
+    - Bidirectional LSTM for better temporal learning
+    - Temporal attention to focus on discriminative timesteps
+    - Reduced regularization to prevent underfitting
     """
-    model = Sequential([
-        # Feature Extraction Block 1
-        Conv1D(64, kernel_size=5, activation="relu", padding="same",
-               input_shape=input_shape, kernel_regularizer=l2(1e-4)),
-        BatchNormalization(),
-        Conv1D(64, kernel_size=3, activation="relu", padding="same",
-               kernel_regularizer=l2(1e-4)),
-        BatchNormalization(),
-        MaxPooling1D(pool_size=2),
-        Dropout(0.2),
+    inputs = Input(shape=input_shape)
 
-        # Feature Extraction Block 2
-        Conv1D(128, kernel_size=3, activation="relu", padding="same",
-               kernel_regularizer=l2(1e-4)),
-        BatchNormalization(),
-        Conv1D(128, kernel_size=3, activation="relu", padding="same",
-               kernel_regularizer=l2(1e-4)),
-        BatchNormalization(),
-        MaxPooling1D(pool_size=2),
-        Dropout(0.3),
+    # Feature Extraction Block 1
+    x = Conv1D(64, kernel_size=5, activation="relu", padding="same",
+               kernel_regularizer=l2(5e-5))(inputs)
+    x = BatchNormalization()(x)
+    x = Conv1D(64, kernel_size=3, activation="relu", padding="same",
+               kernel_regularizer=l2(5e-5))(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling1D(pool_size=2)(x)
+    x = Dropout(0.15)(x)
 
-        # Temporal Learning: LSTM
-        LSTM(128, return_sequences=True, kernel_regularizer=l2(1e-4)),
-        Dropout(0.3),
-        LSTM(64, return_sequences=False, kernel_regularizer=l2(1e-4)),
-        Dropout(0.4),
+    # Feature Extraction Block 2
+    x = Conv1D(128, kernel_size=3, activation="relu", padding="same",
+               kernel_regularizer=l2(5e-5))(x)
+    x = BatchNormalization()(x)
+    x = Conv1D(128, kernel_size=3, activation="relu", padding="same",
+               kernel_regularizer=l2(5e-5))(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling1D(pool_size=2)(x)
+    x = Dropout(0.2)(x)
 
-        # Classifier
-        Dense(128, activation="relu", kernel_regularizer=l2(1e-4)),
-        BatchNormalization(),
-        Dropout(0.4),
-        Dense(64, activation="relu", kernel_regularizer=l2(1e-4)),
-        BatchNormalization(),
-        Dropout(0.3),
-        Dense(num_classes, activation="softmax"),
-    ])
+    # Feature Extraction Block 3 (NEW — deeper feature extraction)
+    x = Conv1D(256, kernel_size=3, activation="relu", padding="same",
+               kernel_regularizer=l2(5e-5))(x)
+    x = BatchNormalization()(x)
+    x = MaxPooling1D(pool_size=2)(x)
+    x = Dropout(0.2)(x)
+
+    # Temporal Learning: Bidirectional LSTM (upgraded from unidirectional)
+    x = Bidirectional(LSTM(128, return_sequences=True, kernel_regularizer=l2(5e-5)))(x)
+    x = Dropout(0.25)(x)
+
+    # Temporal Attention
+    x = attention_block(x)
+
+    x = Bidirectional(LSTM(64, return_sequences=False, kernel_regularizer=l2(5e-5)))(x)
+    x = Dropout(0.3)(x)
+
+    # Classifier (reduced dropout)
+    x = Dense(128, activation="relu", kernel_regularizer=l2(5e-5))(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.3)(x)
+    x = Dense(64, activation="relu", kernel_regularizer=l2(5e-5))(x)
+    x = BatchNormalization()(x)
+    x = Dropout(0.2)(x)
+    outputs = Dense(num_classes, activation="softmax")(x)
+
+    model = Model(inputs=inputs, outputs=outputs)
 
     model.compile(
         optimizer=Adam(learning_rate=0.001),
-        loss="sparse_categorical_crossentropy",
+        loss=focal_loss(gamma=2.0, alpha=0.25),
         metrics=["accuracy"],
     )
     return model
+
 
 def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
     print("\n" + "=" * 60)
@@ -161,7 +226,7 @@ def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
     )
     plt.xlabel("Predicted", fontsize=12)
     plt.ylabel("Actual", fontsize=12)
-    plt.title(f"Confusion Matrix — Hybrid Conv1D+LSTM (Accuracy: {acc*100:.1f}%)", fontsize=14)
+    plt.title(f"Confusion Matrix — Hybrid BiLSTM+Attention (Accuracy: {acc*100:.1f}%)", fontsize=14)
     plt.xticks(rotation=45, ha="right", fontsize=9)
     plt.yticks(rotation=0, fontsize=9)
     plt.tight_layout()
@@ -172,6 +237,7 @@ def evaluate_model(model, X_test, y_test, label_encoder, output_dir):
     print(f"  Confusion matrix saved -> {cm_path}")
 
     return acc
+
 
 def save_artifacts(model, scaler, label_encoder, output_dir):
     print("\n" + "=" * 60)
@@ -206,10 +272,9 @@ def save_artifacts(model, scaler, label_encoder, output_dir):
 
 
 if __name__ == "__main__":
-    # Resolve paths relative to this script (in backend/) to find files in project root
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     ROOT_DIR = os.path.dirname(BASE_DIR)
-    
+
     x_path = os.path.join(ROOT_DIR, "X_all.npy")
     y_path = os.path.join(ROOT_DIR, "y_all.npy")
 
@@ -237,7 +302,7 @@ if __name__ == "__main__":
         print(f"    {name:15s}: {w:.3f}")
 
     print("\n" + "=" * 60)
-    print("  TRAINING MODEL (CUSTOM-PRIORITY, CLASS-WEIGHTED)")
+    print("  TRAINING OPTIMIZED MODEL (BiLSTM + Attention + Focal Loss)")
     print("=" * 60)
     model = create_model(
         input_shape=(FRAME_SIZE, NUM_CHANNELS),
@@ -247,19 +312,19 @@ if __name__ == "__main__":
 
     early_stop = EarlyStopping(
         monitor="val_accuracy",
-        patience=10,
+        patience=15,
         restore_best_weights=True,
         verbose=1,
     )
     reduce_lr = ReduceLROnPlateau(
         monitor="val_loss",
         factor=0.5,
-        patience=3,
+        patience=5,
         min_lr=1e-6,
         verbose=1,
     )
 
-    # Shuffle training data for better gradient updates
+    # Shuffle training data
     shuffle_idx = np.random.permutation(len(X_train))
     X_train = X_train[shuffle_idx]
     y_train = y_train[shuffle_idx]
@@ -281,5 +346,6 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("  ALL DONE!")
     print(f"  Model: {NUM_CLASSES} classes, {NUM_CHANNELS}-channel input")
+    print("  Architecture: Conv1D(3 blocks) + BiLSTM + Attention + Focal Loss")
     print("  Run the app:  python backend/app.py")
     print("=" * 60 + "\n")

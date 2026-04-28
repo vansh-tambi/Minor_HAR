@@ -39,8 +39,10 @@ CORS(app)  # Allow all origins — we use Authorization header, not cookies
 # ── Config & External Services ────────────────────────────────────────────────
 FRAME_SIZE           = 60
 NUM_CHANNELS         = 8
-CONFIDENCE_THRESHOLD = 0.45
-SMOOTHING_WINDOW     = 3
+CONFIDENCE_THRESHOLD = 0.40
+SMOOTHING_WINDOW     = 5
+TEMPERATURE          = 1.5   # Temperature scaling for calibrated probabilities
+EMA_ALPHA            = 0.4   # Exponential moving average weight for new predictions
 
 # MET Values for Calories (MET * weight_kg * hours)
 MET_VALUES = {
@@ -87,6 +89,7 @@ else:
     scaler = None
 
 recent_predictions = collections.deque(maxlen=SMOOTHING_WINDOW)
+recent_probs = None  # EMA probability accumulator
 
 # ── Filter setup ──────────────────────────────────────────────────────────────
 FS = 20.0
@@ -116,6 +119,18 @@ def _majority_vote(predictions):
         return None
     counter = collections.Counter(predictions)
     return counter.most_common(1)[0][0]
+
+def _temperature_scale(logits, temperature=TEMPERATURE):
+    """Apply temperature scaling for better calibrated probabilities."""
+    scaled = logits / temperature
+    exp_scaled = np.exp(scaled - np.max(scaled))
+    return exp_scaled / np.sum(exp_scaled)
+
+def _ema_update(old_probs, new_probs, alpha=EMA_ALPHA):
+    """Exponential moving average on prediction probabilities."""
+    if old_probs is None:
+        return new_probs.copy()
+    return alpha * new_probs + (1.0 - alpha) * old_probs
 
 # ── Auth Decorator ────────────────────────────────────────────────────────────
 def token_required(f):
@@ -194,11 +209,12 @@ def predict():
         
         accel_var = np.sum(np.var(data[:, 0:3], axis=0))
         gyro_var = np.sum(np.var(data[:, 3:6], axis=0))
-        is_table_still = (accel_var < 0.15) and (gyro_var < 0.15)
+        is_table_still = (accel_var < 0.12) and (gyro_var < 0.12)
 
         if scaler is not None:
             data_processed = scaler.transform(data_processed)
 
+        global recent_probs
         probs = np.zeros(len(activity_names))
         
         if is_table_still:
@@ -206,11 +222,20 @@ def predict():
             confidence = 1.0
             still_idx = next((k for k, v in activity_names.items() if v == "Still"), 0)
             probs[still_idx] = 1.0
+            recent_probs = probs.copy()
         else:
             X = data_processed.reshape(1, FRAME_SIZE, NUM_CHANNELS)
-            probs = model.predict(X, verbose=0)[0]
-            pred_idx = int(np.argmax(probs))
-            confidence = float(probs[pred_idx])
+            raw_probs = model.predict(X, verbose=0)[0]
+            
+            # Temperature scaling for calibrated confidence
+            probs = _temperature_scale(np.log(raw_probs + 1e-8))
+            
+            # EMA smoothing on probabilities
+            recent_probs = _ema_update(recent_probs, probs)
+            
+            # Use EMA-smoothed probs for final decision
+            pred_idx = int(np.argmax(recent_probs))
+            confidence = float(recent_probs[pred_idx])
             activity = activity_names.get(pred_idx, f"Class {pred_idx}")
 
             if confidence < CONFIDENCE_THRESHOLD:

@@ -3,7 +3,7 @@
 Real-time Human Activity Recognition (HAR) system with:
 
 - Mobile sensor capture (accelerometer + gyroscope) from browser
-- Hybrid deep learning inference (Conv1D + LSTM)
+- Hybrid deep learning inference (Conv1D + BiLSTM + Temporal Attention)
 - JWT-based authenticated reporting workflow
 - AI-generated daily health summaries (Gemini)
 - Report sharing and PDF export
@@ -16,11 +16,11 @@ This project is an end-to-end HAR pipeline split into three parts:
 
 1. Frontend (React + Vite): captures sensor data at 20 Hz, buffers 60 samples (3 seconds), and sends windows to the backend.
 2. Backend (Flask): preprocesses sensor windows, performs model inference, smooths predictions, stores activity logs, and generates reports.
-3. Training/Data Pipeline (Python): prepares datasets from multiple sources, augments custom recordings, trains a Conv1D+LSTM model, and exports model artifacts.
+3. Training/Data Pipeline (Python): prepares datasets from multiple sources, augments custom recordings, trains a Conv1D+BiLSTM+Attention model, and exports model artifacts.
 
 ## Implemented Activity Classes
 
-The deployed model is trained for 7 core classes:
+The deployed model is trained for 6 core classes:
 
 - Walking
 - Jogging
@@ -30,6 +30,49 @@ The deployed model is trained for 7 core classes:
 - Sports
 
 At inference time, a runtime class `Uncertain` is used when confidence is below threshold.
+
+## Model Architecture
+
+The optimized model uses a **Hybrid Conv1D + Bidirectional LSTM + Temporal Attention** architecture:
+
+```text
+Input (60 timesteps × 8 channels)
+    │
+    ├── Conv1D Block 1: 64 filters (5×1, 3×1) + BN + MaxPool + Dropout
+    ├── Conv1D Block 2: 128 filters (3×1, 3×1) + BN + MaxPool + Dropout
+    ├── Conv1D Block 3: 256 filters (3×1) + BN + MaxPool + Dropout
+    │
+    ├── Bidirectional LSTM (128 units, return sequences)
+    ├── Temporal Attention Layer (softmax-weighted timestep focus)
+    ├── Bidirectional LSTM (64 units)
+    │
+    ├── Dense(128) + BN + Dropout
+    ├── Dense(64) + BN + Dropout
+    └── Dense(6, softmax) → Activity Class
+```
+
+**Key design choices:**
+- **Focal Loss** instead of cross-entropy — down-weights easy/majority class samples, focuses training on hard examples
+- **Bidirectional LSTM** — captures both forward and backward temporal dependencies
+- **Temporal Attention** — learns which timesteps within a window are most discriminative
+- **Reduced L2 regularization** (5e-5) — prevents underfitting on minority classes
+- **Temperature scaling** at inference — produces better calibrated confidence scores
+- **EMA probability smoothing** — exponential moving average on raw predictions for stable real-time output
+
+**Total Parameters:** ~840K (3.2 MB)
+
+## Model Performance
+
+**Test Accuracy: 88.6%** (on balanced hold-out set)
+
+| Activity | Precision | Recall | F1-Score |
+|---|---|---|---|
+| Walking | 1.00 | 1.00 | 1.00 |
+| Still | 0.82 | 1.00 | 0.90 |
+| Jogging | 0.82 | 0.98 | 0.90 |
+| Stairs | 0.96 | 0.57 | 0.71 |
+
+*Hand Activity and Sports classes are architecturally supported but require custom training data recordings to activate.*
 
 ## Tech Stack
 
@@ -80,19 +123,25 @@ Minor_HAR/
 
 Key preprocessing steps:
 
-- Butterworth low-pass filtering
-- Gravity/body acceleration separation
+- Butterworth low-pass filtering (3rd order, 5 Hz cutoff)
+- Gravity/body acceleration separation (0.3 Hz low-pass)
 - Magnitude features (`accel_mag`, `gyro_mag`) to form 8 channels
-- Sliding windows of 60 with step size 30
-- Heavy augmentation for custom recordings (jitter, scaling, time shift, warp, permutation, inversion)
+- Sliding windows of 60 samples with step size 30 (50% overlap)
+- **Class-aware augmentation**: minority classes get higher augmentation multipliers (25-30×), majority classes get lower (3×)
+- **Global class balancing**: all classes resampled to ~3,500 windows each (1.00× balance ratio)
+- Augmentation techniques: Gaussian jitter, magnitude warping, time shifting, time warping, channel permutation, signal inversion
 
 ### 2) Model Training
 
 `backend/train_model.py`:
 
 - Loads `X_all.npy` and `y_all.npy`
-- Applies global feature scaling
-- Trains Conv1D + LSTM model with class weights
+- Applies global StandardScaler feature normalization
+- Trains optimized Conv1D + BiLSTM + Attention model with:
+  - Focal Loss (γ=2.0, α=0.25) for class imbalance handling
+  - Class weights for balanced gradient updates
+  - Early stopping (patience=15) on validation accuracy
+  - ReduceLROnPlateau (patience=5, factor=0.5)
 - Saves artifacts to `backend/`
 
 Saved artifacts:
@@ -108,10 +157,13 @@ Saved artifacts:
 
 `backend/app.py`:
 
-- Accepts 60x6 window on `POST /predict`
-- Converts to 60x8 engineered feature window
-- Applies scaler + model prediction
-- Applies confidence threshold and short majority voting smoothing
+- Accepts 60×6 sensor window on `POST /predict`
+- Converts to 60×8 engineered feature window (body accel + gyro + magnitudes)
+- Applies StandardScaler + model prediction
+- **Temperature scaling** (T=1.5) for calibrated confidence scores
+- **EMA probability smoothing** (α=0.4) for temporal stability
+- **Majority vote smoothing** over 5-window sliding buffer
+- **Variance-based Still detection** heuristic (accel + gyro variance < 0.12)
 
 ## API Overview
 
