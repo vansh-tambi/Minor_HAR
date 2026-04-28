@@ -60,12 +60,12 @@ MET_VALUES = {
 # These thresholds gate which activities are allowed at a given motion level,
 # preventing slight wrist movements from being classified as Stairs / Jogging.
 INTENSITY_SLIGHT   = 0.8    # <= this: only Hand Activity  (light wrist / hand motion)
-INTENSITY_MODERATE = 3.0    # <= this: Walking & Stairs also allowed
-INTENSITY_HIGH     = 8.0    # <= this: Jogging also allowed; above: Sports allowed
+INTENSITY_STAIRS   = 2.0    # <= this: Stairs also allowed
+INTENSITY_WALK_JOG = 5.0    # <= this: Walking & Jogging also allowed; above: Sports allowed
 
 ACTIVITIES_SLIGHT   = {"Still", "Hand Activity", "Uncertain"}
-ACTIVITIES_MODERATE = {"Still", "Hand Activity", "Walking", "Stairs", "Uncertain"}
-ACTIVITIES_HIGH     = {"Still", "Hand Activity", "Walking", "Stairs", "Jogging", "Uncertain"}
+ACTIVITIES_STAIRS   = {"Still", "Hand Activity", "Stairs", "Uncertain"}
+ACTIVITIES_WALK_JOG = {"Still", "Hand Activity", "Stairs", "Walking", "Jogging", "Uncertain"}
 
 # MongoDB
 MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
@@ -278,10 +278,10 @@ def predict():
             total_var = accel_var + gyro_var
             if total_var < INTENSITY_SLIGHT:
                 allowed = ACTIVITIES_SLIGHT
-            elif total_var < INTENSITY_MODERATE:
-                allowed = ACTIVITIES_MODERATE
-            elif total_var < INTENSITY_HIGH:
-                allowed = ACTIVITIES_HIGH
+            elif total_var < INTENSITY_STAIRS:
+                allowed = ACTIVITIES_STAIRS
+            elif total_var < INTENSITY_WALK_JOG:
+                allowed = ACTIVITIES_WALK_JOG
             else:
                 allowed = None          # everything permitted
 

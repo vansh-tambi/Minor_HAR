@@ -242,19 +242,23 @@ def balance_dataset(frames, labels, target_per_class=TARGET_PER_CLASS):
     balanced_frames, balanced_labels = [], []
     for label, bucket in sorted(class_buckets.items()):
         current = len(bucket)
+        
+        # Explicitly reduce Stairs representation in the dataset
+        current_target = 1500 if label == "Stairs" else target_per_class
+        
         if current == 0:
             print(f"    {label:15s}: SKIPPED (no data)", flush=True)
             continue
-        if current >= target_per_class:
-            indices = np.random.choice(current, target_per_class, replace=False)
+        if current >= current_target:
+            indices = np.random.choice(current, current_target, replace=False)
             selected = [bucket[i] for i in indices]
             balanced_frames.extend(selected)
-            balanced_labels.extend([label] * target_per_class)
-            print(f"    {label:15s}: {current:5d} -> {target_per_class} (undersampled)", flush=True)
+            balanced_labels.extend([label] * current_target)
+            print(f"    {label:15s}: {current:5d} -> {current_target} (undersampled)", flush=True)
         else:
             balanced_frames.extend(bucket)
             balanced_labels.extend([label] * current)
-            needed = target_per_class - current
+            needed = current_target - current
             # Oversample by repeating + augmenting
             aug_sources = []
             aug_source_labels = []
@@ -277,9 +281,9 @@ def extract_all_custom():
         "jogging.csv": "Jogging",
         "sensor_recording_20260424_131838.csv": "Stairs",
         "sensor_recording_20260424_184254.csv": "Stairs",
-        "sensor_recording_20260424_184845.csv": "Stairs",
-        "sensor_recording_20260426_145530.csv": "Stairs",
-        "sensor_recording_20260426_145547.csv": "Stairs",
+        # "sensor_recording_20260424_184845.csv": "Stairs", # Reduced Stairs data
+        # "sensor_recording_20260426_145530.csv": "Stairs", # Reduced Stairs data
+        # "sensor_recording_20260426_145547.csv": "Stairs", # Reduced Stairs data
         "sensor_recording_20260426_162439.csv": "Walking",
         "sensor_recording_20260427_174501.csv": "Walking",
     }
