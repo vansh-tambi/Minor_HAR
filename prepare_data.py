@@ -281,6 +281,7 @@ def extract_all_custom():
         "sensor_recording_20260426_145530.csv": "Stairs",
         "sensor_recording_20260426_145547.csv": "Stairs",
         "sensor_recording_20260426_162439.csv": "Walking",
+        "sensor_recording_20260427_174501.csv": "Walking",
     }
     AUG_MULTIPLIERS = {
         "Stairs": 3, "Still": 30, "Jogging": 25, "Walking": 25,

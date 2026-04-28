@@ -55,6 +55,18 @@ MET_VALUES = {
     "Uncertain": 1.0
 }
 
+# ── Intensity-based activity hierarchy thresholds ─────────────────────────────
+# total_var = accel_var + gyro_var  (sum of per-axis variances)
+# These thresholds gate which activities are allowed at a given motion level,
+# preventing slight wrist movements from being classified as Stairs / Jogging.
+INTENSITY_SLIGHT   = 0.8    # <= this: only Hand Activity  (light wrist / hand motion)
+INTENSITY_MODERATE = 3.0    # <= this: Walking & Stairs also allowed
+INTENSITY_HIGH     = 8.0    # <= this: Jogging also allowed; above: Sports allowed
+
+ACTIVITIES_SLIGHT   = {"Still", "Hand Activity", "Uncertain"}
+ACTIVITIES_MODERATE = {"Still", "Hand Activity", "Walking", "Stairs", "Uncertain"}
+ACTIVITIES_HIGH     = {"Still", "Hand Activity", "Walking", "Stairs", "Jogging", "Uncertain"}
+
 # MongoDB
 MONGO_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/")
 mongo_client = MongoClient(MONGO_URI)
@@ -68,12 +80,32 @@ JWT_SECRET = os.getenv("JWT_SECRET", "super-secret-har-key")
 if os.getenv("GEMINI_API_KEY"):
     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
+# ── Custom loss function (must be defined before loading model) ────────────────
+NUM_CLASSES_MODEL = 6  # Must match training config
+
+try:
+    import keras.ops as ops
+except ImportError:
+    import keras.backend as ops
+
+def focal_loss_fn(y_true, y_pred):
+    """Focal loss — required to load the trained model."""
+    gamma, alpha = 2.0, 0.25
+    y_true = ops.cast(y_true, 'int32')
+    y_true_one_hot = ops.one_hot(ops.reshape(y_true, [-1]), NUM_CLASSES_MODEL)
+    y_pred = ops.clip(y_pred, 1e-7, 1.0 - 1e-7)
+    cross_entropy = -y_true_one_hot * ops.log(y_pred)
+    weight = alpha * y_true_one_hot * ops.power(1.0 - y_pred, gamma)
+    loss = weight * cross_entropy
+    return ops.sum(loss, axis=-1)
+
 # ── Load model & helpers on startup ───────────────────────────────────────────
 BASE = os.path.dirname(__file__)
 
 print("Loading model...")
-model = load_model(os.path.join(BASE, "har_model.keras"))
-print("  ✔ Model loaded.")
+model = load_model(os.path.join(BASE, "har_model.keras"),
+                   custom_objects={"focal_loss_fn": focal_loss_fn})
+print("  [OK] Model loaded.")
 
 with open(os.path.join(BASE, "label_encoder.pkl"), "rb") as f:
     label_encoder = pickle.load(f)
@@ -240,6 +272,29 @@ def predict():
 
             if confidence < CONFIDENCE_THRESHOLD:
                 activity = "Uncertain"
+
+            # ── Intensity-based activity gating ───────────────────────────
+            # Prevent high-intensity labels when the actual motion is slight.
+            total_var = accel_var + gyro_var
+            if total_var < INTENSITY_SLIGHT:
+                allowed = ACTIVITIES_SLIGHT
+            elif total_var < INTENSITY_MODERATE:
+                allowed = ACTIVITIES_MODERATE
+            elif total_var < INTENSITY_HIGH:
+                allowed = ACTIVITIES_HIGH
+            else:
+                allowed = None          # everything permitted
+
+            if allowed and activity not in allowed:
+                # Pick the highest-probability activity from the allowed set
+                best_idx, best_prob = None, -1.0
+                for idx, name in activity_names.items():
+                    if name in allowed and recent_probs[idx] > best_prob:
+                        best_prob = recent_probs[idx]
+                        best_idx = idx
+                if best_idx is not None:
+                    activity = activity_names[best_idx]
+                    confidence = float(recent_probs[best_idx])
 
         recent_predictions.append(activity)
         smoothed_activity = _majority_vote(recent_predictions)
